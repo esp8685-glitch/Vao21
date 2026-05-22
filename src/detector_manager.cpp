@@ -111,6 +111,37 @@ std::vector<String> getStoredDetectors()
     return result;
 }
 
+std::vector<String> readDetectorListFile()
+{
+    std::vector<String> result;
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+    {
+        writeLog("Failed to lock SD for reading detectors list");
+        return result;
+    }
+
+    File f = SD.open(DETECTOR_LIST_FILE, FILE_READ);
+    if (!f)
+    {
+        writeLog("Failed to open detector list file for reading");
+        unlockSD();
+        return result;
+    }
+
+    while (f.available())
+    {
+        String line = f.readStringUntil('\n');
+        line.trim();
+        if (line.length() > 0)
+        {
+            result.push_back(line);
+        }
+    }
+    f.close();
+    unlockSD();
+    return result;
+}
+
 bool detectorExists(const String &address)
 {
     return detectorCache.find(address) != detectorCache.end();

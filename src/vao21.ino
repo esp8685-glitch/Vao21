@@ -111,6 +111,17 @@ xTaskCreatePinnedToCore(
 
 void loop()
 {
+    if (Serial.available())
+    {
+        String line = Serial.readStringUntil('\n');
+        if (line.length() > 0)
+        {
+            if (line.endsWith("\r"))
+                line.remove(line.length() - 1);
+            handleSerialConsoleLine(line);
+        }
+    }
+
     vTaskDelay(
         1000 / portTICK_PERIOD_MS
     );

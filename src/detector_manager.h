@@ -12,5 +12,8 @@ bool addDetectorAddress(const String &address);
 // Get all stored detector addresses
 std::vector<String> getStoredDetectors();
 
+// Read detector addresses directly from the SD file
+std::vector<String> readDetectorListFile();
+
 // Check if address exists
 bool detectorExists(const String &address);

@@ -183,6 +183,27 @@ void processLine(String line){
     if (line.isEmpty())
         return;
 
+    String command = line;
+    command.trim();
+    command.toUpperCase();
+    if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
+    {
+        Serial.println("DETECTOR LIST:");
+        std::vector<String> detectors = readDetectorListFile();
+        if (detectors.empty())
+        {
+            Serial.println("No detectors found or failed to read detector list file.");
+        }
+        else
+        {
+            for (const auto &det : detectors)
+            {
+                Serial.println(det);
+            }
+        }
+        return;
+    }
+
     Serial.println("USB RX: " + line);
 
     // Try to extract detector address from this line
@@ -259,6 +280,35 @@ void checkTimeout()
 }
 };
 SerialFTDI usbSerial;
+
+void printDetectorListToSerial()
+{
+    Serial.println("DETECTOR LIST:");
+    std::vector<String> detectors = readDetectorListFile();
+    if (detectors.empty())
+    {
+        Serial.println("No detectors found or failed to read detector list file.");
+        return;
+    }
+
+    for (const auto &det : detectors)
+    {
+        Serial.println(det);
+    }
+}
+
+void handleSerialConsoleLine(const String &line)
+{
+    String command = line;
+    command.trim();
+    command.toUpperCase();
+
+    if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
+    {
+        printDetectorListToSerial();
+        return;
+    }
+}
 
 void usbTask(void *pv)
 {
