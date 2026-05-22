@@ -2,6 +2,7 @@
 #include "storage.h"
 #include "config.h"
 #include "logger.h"
+#include <algorithm>
 #include <set>
 
 // In-memory cache of detector addresses
@@ -9,6 +10,7 @@ std::set<String> detectorCache;
 bool detectorCacheInitialized = false;
 
 const char *DETECTOR_LIST_FILE = "/detectors.txt";
+static bool detectorAddressLess(const String &a, const String &b);
 
 bool initDetectorStorage()
 {
@@ -108,6 +110,7 @@ std::vector<String> getStoredDetectors()
     {
         result.push_back(addr);
     }
+    std::sort(result.begin(), result.end(), detectorAddressLess);
     return result;
 }
 
@@ -139,7 +142,39 @@ std::vector<String> readDetectorListFile()
     }
     f.close();
     unlockSD();
+
+    std::sort(result.begin(), result.end(), detectorAddressLess);
     return result;
+}
+
+static bool detectorAddressLess(const String &a, const String &b)
+{
+    int dotA = a.indexOf('.');
+    int dotB = b.indexOf('.');
+
+    String intPartA = dotA >= 0 ? a.substring(0, dotA) : a;
+    String intPartB = dotB >= 0 ? b.substring(0, dotB) : b;
+
+    long valueA = intPartA.toInt();
+    long valueB = intPartB.toInt();
+    if (valueA != valueB)
+    {
+        return valueA < valueB;
+    }
+
+    String fracA = dotA >= 0 ? a.substring(dotA + 1) : String();
+    String fracB = dotB >= 0 ? b.substring(dotB + 1) : String();
+
+    int maxLen = fracA.length() > fracB.length() ? fracA.length() : fracB.length();
+    while (fracA.length() < maxLen) fracA += '0';
+    while (fracB.length() < maxLen) fracB += '0';
+
+    if (fracA != fracB)
+    {
+        return fracA < fracB;
+    }
+
+    return a < b;
 }
 
 bool detectorExists(const String &address)
