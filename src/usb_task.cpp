@@ -21,80 +21,56 @@ bool isValidLeadingChar(char c)
 }
 
 // Helper function to extract detector address from a line
-// Looks for hex addresses patterns like AA:BB:CC:DD:EE:FF or AABBCCDDEEFF
+// Looks for numeric patterns like 3.031, 3.036, etc.
 bool tryExtractDetectorAddress(const String &line, String &address)
 {
-    // Pattern 1: MAC address format AA:BB:CC:DD:EE:FF
-    if (line.length() >= 17)
-    {
-        // Check for pattern like XX:XX:XX:XX:XX:XX
-        int colonCount = 0;
-        int startPos = -1;
-        
-        for (int i = 0; i <= line.length() - 17; i++)
-        {
-            colonCount = 0;
-            bool isValidMac = true;
-            
-            // Check 17 character segment
-            for (int j = 0; j < 17; j++)
-            {
-                char c = line[i + j];
-                if (j % 3 == 2)
-                {
-                    if (c != ':')
-                    {
-                        isValidMac = false;
-                        break;
-                    }
-                    colonCount++;
-                }
-                else
-                {
-                    if (!isxdigit(c))
-                    {
-                        isValidMac = false;
-                        break;
-                    }
-                }
-            }
-            
-            if (isValidMac && colonCount == 5)
-            {
-                address = line.substring(i, i + 17);
-                address.toUpperCase();
-                return true;
-            }
-        }
-    }
+    // Pattern: one or more digits, dot, three or four digits (e.g., 3.031, 10.0042)
+    int dotPos = -1;
+    int startPos = -1;
+    int endPos = -1;
 
-    // Pattern 2: Continuous hex without colons (12 characters)
-    if (line.length() >= 12)
+    // Find all potential matches in the line
+    for (int i = 0; i < line.length(); i++)
     {
-        for (int i = 0; i <= line.length() - 12; i++)
+        if (line[i] == '.')
         {
-            bool isValidHex = true;
-            for (int j = 0; j < 12; j++)
+            // Check if there are digits before the dot
+            if (i > 0 && isdigit(line[i - 1]))
             {
-                if (!isxdigit(line[i + j]))
+                // Find the start of the number (digits before the dot)
+                startPos = i - 1;
+                while (startPos > 0 && isdigit(line[startPos - 1]))
                 {
-                    isValidHex = false;
-                    break;
+                    startPos--;
                 }
-            }
-            
-            if (isValidHex)
-            {
-                String hexAddr = line.substring(i, i + 12);
-                hexAddr.toUpperCase();
-                // Format as MAC address
-                address = hexAddr.substring(0, 2) + ":" + 
-                         hexAddr.substring(2, 4) + ":" +
-                         hexAddr.substring(4, 6) + ":" +
-                         hexAddr.substring(6, 8) + ":" +
-                         hexAddr.substring(8, 10) + ":" +
-                         hexAddr.substring(10, 12);
-                return true;
+
+                // Check if there are 3-4 digits after the dot
+                if (i + 4 <= line.length() && 
+                    isdigit(line[i + 1]) && 
+                    isdigit(line[i + 2]) && 
+                    isdigit(line[i + 3]))
+                {
+                    endPos = i + 4;
+                    
+                    // Check if the 4th digit is actually part of the number or something else
+                    // For robustness, allow 3-4 digits after decimal
+                    if (i + 5 < line.length() && isdigit(line[i + 4]))
+                    {
+                        endPos = i + 5;
+                    }
+
+                    address = line.substring(startPos, endPos);
+                    return true;
+                }
+                else if (i + 3 <= line.length() && 
+                         isdigit(line[i + 1]) && 
+                         isdigit(line[i + 2]) && 
+                         isdigit(line[i + 3]))
+                {
+                    endPos = i + 4;
+                    address = line.substring(startPos, endPos);
+                    return true;
+                }
             }
         }
     }
