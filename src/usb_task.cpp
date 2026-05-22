@@ -5,6 +5,7 @@
 #include "email_queue.h"
 #include "logger.h"
 #include "config.h"
+#include "detector_manager.h"
 
 bool isValidChar(uint8_t c)
 {
@@ -19,6 +20,88 @@ bool isValidLeadingChar(char c)
            c == '/';
 }
 
+// Helper function to extract detector address from a line
+// Looks for hex addresses patterns like AA:BB:CC:DD:EE:FF or AABBCCDDEEFF
+bool tryExtractDetectorAddress(const String &line, String &address)
+{
+    // Pattern 1: MAC address format AA:BB:CC:DD:EE:FF
+    if (line.length() >= 17)
+    {
+        // Check for pattern like XX:XX:XX:XX:XX:XX
+        int colonCount = 0;
+        int startPos = -1;
+        
+        for (int i = 0; i <= line.length() - 17; i++)
+        {
+            colonCount = 0;
+            bool isValidMac = true;
+            
+            // Check 17 character segment
+            for (int j = 0; j < 17; j++)
+            {
+                char c = line[i + j];
+                if (j % 3 == 2)
+                {
+                    if (c != ':')
+                    {
+                        isValidMac = false;
+                        break;
+                    }
+                    colonCount++;
+                }
+                else
+                {
+                    if (!isxdigit(c))
+                    {
+                        isValidMac = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (isValidMac && colonCount == 5)
+            {
+                address = line.substring(i, i + 17);
+                address.toUpperCase();
+                return true;
+            }
+        }
+    }
+
+    // Pattern 2: Continuous hex without colons (12 characters)
+    if (line.length() >= 12)
+    {
+        for (int i = 0; i <= line.length() - 12; i++)
+        {
+            bool isValidHex = true;
+            for (int j = 0; j < 12; j++)
+            {
+                if (!isxdigit(line[i + j]))
+                {
+                    isValidHex = false;
+                    break;
+                }
+            }
+            
+            if (isValidHex)
+            {
+                String hexAddr = line.substring(i, i + 12);
+                hexAddr.toUpperCase();
+                // Format as MAC address
+                address = hexAddr.substring(0, 2) + ":" + 
+                         hexAddr.substring(2, 4) + ":" +
+                         hexAddr.substring(4, 6) + ":" +
+                         hexAddr.substring(6, 8) + ":" +
+                         hexAddr.substring(8, 10) + ":" +
+                         hexAddr.substring(10, 12);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 class SerialFTDI : public EspUsbHostSerial_FTDI
 {
 private:
@@ -30,7 +113,6 @@ private:
     void onNew() override
     {
         writeLog("USB FTDI connected");
-        // String mf=("Manufacturer: " + getManufacturer()).c_str();
         writeLog(("Manufacturer: " + getManufacturer()).c_str());
         writeLog(("Product: " + getProduct()).c_str());
         writeLog("Baud rate: " + BAUD_RATE);
@@ -126,6 +208,20 @@ void processLine(String line){
         return;
 
     Serial.println("USB RX: " + line);
+
+    // Try to extract detector address from this line
+    String detectorAddr;
+    if (tryExtractDetectorAddress(line, detectorAddr))
+    {
+        if (!detectorExists(detectorAddr))
+        {
+            if (addDetectorAddress(detectorAddr))
+            {
+                Serial.println("NEW DETECTOR: " + detectorAddr);
+                writeLog("Discovered detector: " + detectorAddr);
+            }
+        }
+    }
 
     if (isTimestampLine(line))
     {
