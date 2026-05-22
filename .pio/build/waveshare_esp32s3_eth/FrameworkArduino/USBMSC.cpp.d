@@ -1,7 +1,7 @@
 .pio/build/waveshare_esp32s3_eth/FrameworkArduino/USBMSC.cpp.o: \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/USBMSC.cpp \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/USBMSC.h \
- /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/dio_qspi/include/sdkconfig.h \
+ /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/qio_opi/include/sdkconfig.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-tinyusb.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_system/include/esp_system.h \
