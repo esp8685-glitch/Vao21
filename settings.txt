@@ -1,0 +1,8 @@
+Flash Mode      : QIO
+CPU Frequency   : 240MHz
+PSRAM           : Disabled
+Core Debug      : Debug
+Partition       : Huge APP
+Erase Flash     : Enabled
+
+usb cdc on boot: disabled
