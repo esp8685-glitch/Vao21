@@ -58,7 +58,7 @@ void setup()
             delay(1000);
     }
 
-    writeLog("BOOT");
+    //writeLog("BOOT");
     recoverEmailQueue();
 
     // Initialize detector manager
@@ -70,8 +70,8 @@ void setup()
     ethernetConnect();
     initEmailSystem();
 
-    Serial.println("BOOT 6");
-    writeLog("vao21 boot");
+    //Serial.println("BOOT 6");
+    //writeLog("vao21 boot");
 
     xTaskCreatePinnedToCore(
         ethernetTask,
@@ -102,11 +102,13 @@ xTaskCreatePinnedToCore(
     NULL,
     1
 );
-
+/*
     queueEmail(
         "VAO21 START " + String(millis()),
         "System boot successful " + String((uint32_t)esp_random(), HEX)
     );
+*/
+sendDetectorListEmail();
 }
 
 void loop()

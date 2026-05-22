@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <set>
 
+#include "email_queue.h"
+
 // In-memory cache of detector addresses
 std::set<String> detectorCache;
 bool detectorCacheInitialized = false;
@@ -180,4 +182,31 @@ static bool detectorAddressLess(const String &a, const String &b)
 bool detectorExists(const String &address)
 {
     return detectorCache.find(address) != detectorCache.end();
+}
+
+void sendDetectorListEmail()
+{
+    std::vector<String> detectors = getStoredDetectors();
+
+    String body;
+    body += "VAO21 Boot Detector List\r\n";
+    body += "========================\r\n\r\n";
+
+    if (detectors.empty())
+    {
+        body += "No detectors stored.\r\n";
+    }
+    else
+    {
+        body += "Total detectors: " + String(detectors.size()) + "\r\n\r\n";
+
+        for (size_t i = 0; i < detectors.size(); i++)
+        {
+            body += detectors[i] + "\r\n";
+        }
+    }
+
+    queueEmail("VAO21 Detector List", body);
+
+    writeLog("Queued detector list email");
 }
