@@ -4,6 +4,7 @@
 #include "email_queue.h"
 #include "ethernet_manager.h"
 #include "usb_task.h"
+#include "detector_manager.h"
 
 SemaphoreHandle_t sdMutex = NULL;
 SemaphoreHandle_t ethMutex = NULL;
@@ -59,6 +60,12 @@ void setup()
 
     writeLog("BOOT");
     recoverEmailQueue();
+
+    // Initialize detector manager
+    if (!initDetectorStorage())
+    {
+        writeLog("WARNING: Failed to initialize detector storage");
+    }
 
     ethernetConnect();
     initEmailSystem();
