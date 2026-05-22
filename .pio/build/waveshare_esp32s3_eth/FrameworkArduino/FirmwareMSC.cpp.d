@@ -2,7 +2,7 @@
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/FirmwareMSC.cpp \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/FirmwareMSC.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/USBMSC.h \
- /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/dio_qspi/include/sdkconfig.h \
+ /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/qio_opi/include/sdkconfig.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_event/include/esp_event.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_err.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_compiler.h \

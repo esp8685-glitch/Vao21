@@ -1,6 +1,6 @@
 .pio/build/waveshare_esp32s3_eth/FrameworkArduino/esp32-hal-cpu.c.o: \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-cpu.c \
- /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/dio_qspi/include/sdkconfig.h \
+ /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/qio_opi/include/sdkconfig.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/freertos/include/freertos/FreeRTOS.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/freertos/include/esp_additions/freertos/FreeRTOSConfig.h \
  /home/codespace/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_compiler.h \
