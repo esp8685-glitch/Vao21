@@ -1,6 +1,7 @@
 #include "detector_manager.h"
 #include "storage.h"
 #include "config.h"
+#include "logger.h"
 #include <set>
 
 // In-memory cache of detector addresses
