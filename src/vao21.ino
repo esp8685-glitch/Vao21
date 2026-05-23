@@ -5,6 +5,7 @@
 #include "ethernet_manager.h"
 #include "usb_task.h"
 #include "detector_manager.h"
+#include "mqtt_manager.h"
 
 SemaphoreHandle_t sdMutex = NULL;
 SemaphoreHandle_t ethMutex = NULL;
@@ -69,7 +70,8 @@ void setup()
 
     ethernetConnect();
     initEmailSystem();
-
+    mqttSetup();
+    
     //Serial.println("BOOT 6");
     //writeLog("vao21 boot");
 
@@ -113,6 +115,7 @@ sendDetectorListEmail();
 
 void loop()
 {
+    mqttLoop();
     if (Serial.available())
     {
         String line = Serial.readStringUntil('\n');
