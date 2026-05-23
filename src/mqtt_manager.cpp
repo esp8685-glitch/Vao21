@@ -1,6 +1,6 @@
 #include "mqtt_manager.h"
 #include <Arduino.h>
-#include <Ethernet.h>
+#include <Ethernet2.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
