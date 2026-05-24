@@ -102,3 +102,6 @@ String getTimestamp();
 bool getHttpTime(struct tm &timeinfo);
 int lastSunday(int year, int month);
 bool isDstEU(struct tm &utc);
+
+extern volatile bool detectorEmailRequest;
+extern volatile bool clearDetectorsRequest;

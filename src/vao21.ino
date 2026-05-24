@@ -126,8 +126,19 @@ void loop()
             handleSerialConsoleLine(line);
         }
     }
-
+    processPendingCommands();
     vTaskDelay(
         1000 / portTICK_PERIOD_MS
     );
+}
+
+void processPendingCommands(){
+    if (detectorEmailRequest){
+        detectorEmailRequest = false;
+        sendDetectorListEmail();
+    }
+    if (clearDetectorsRequest){
+        clearDetectorsRequest = false;
+        clearDetectorList();
+    }
 }

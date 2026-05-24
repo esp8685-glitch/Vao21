@@ -210,3 +210,35 @@ void sendDetectorListEmail()
 
     writeLog("Queued detector list email");
 }
+bool clearDetectorList()
+{
+    detectorCache.clear();
+
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+    {
+        writeLog("Failed to lock SD for clearing detector list");
+        return false;
+    }
+
+    if (SD.exists(DETECTOR_LIST_FILE))
+    {
+        SD.remove(DETECTOR_LIST_FILE);
+    }
+
+    File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
+
+    if (!f)
+    {
+        writeLog("Failed to recreate detector list file");
+        unlockSD();
+        return false;
+    }
+
+    f.close();
+
+    unlockSD();
+
+    writeLog("Detector list cleared");
+
+    return true;
+}
