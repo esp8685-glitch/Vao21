@@ -2,6 +2,9 @@
 #include "logger.h"
 #include "ethernet_manager.h"
 #include "storage.h"
+#include "ethernet_shared.h"
+
+EthernetClient ethClient;
 
 byte mac[6] = {
     0x02, 0xAB, 0xCD, 0xEF, 0x12, 0x34

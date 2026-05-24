@@ -6,6 +6,7 @@
 #include <PubSubClient.h>
 #include "config.h"
 #include "certs.h"
+#include "ethernet_shared.h"
 
 //const char* mqtt_server ="739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
 //const int mqtt_port = 8883;
@@ -15,7 +16,6 @@
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
-extern EthernetClient ethClient;
 ESP_SSLClient sslClient;
 PubSubClient mqtt(sslClient);
 
