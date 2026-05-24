@@ -7,7 +7,7 @@
 bool initDetectorStorage();
 
 // Add detector address to the list (prevents duplicates)
-bool addDetectorAddress(const String &address);
+bool addDetectorAddress(const String &address, const String &timestamp)
 
 // Get all stored detector addresses
 std::vector<String> getStoredDetectors();

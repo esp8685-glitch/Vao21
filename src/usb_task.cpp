@@ -85,6 +85,8 @@ private:
     std::vector<String> activeBuffer;
 
     unsigned long groupStartTime = 0;
+    String currentTimestamp = "";
+    bool currentEventIsSmokeAlarm = false;
 
     void onNew() override
     {
@@ -208,47 +210,50 @@ void processLine(String line){
 
     // Try to extract detector address from this line
     String detectorAddr;
-    if (tryExtractDetectorAddress(line, detectorAddr))
+    if (currentEventIsSmokeAlarm &&
+        tryExtractDetectorAddress(line, detectorAddr))
     {
         if (!detectorExists(detectorAddr))
         {
-            if (addDetectorAddress(detectorAddr))
+            if (addDetectorAddress(detectorAddr, currentTimestamp))
             {
                 Serial.println("NEW DETECTOR: " + detectorAddr);
-                writeLog("Discovered detector: " + detectorAddr);
+
+                writeLog(
+                    "Discovered detector: " +
+                    detectorAddr +
+                    " at " +
+                    currentTimestamp
+                );
             }
         }
     }
 
-    if (isTimestampLine(line))
-    {
+    if (isTimestampLine(line)){
+        currentEventIsSmokeAlarm = false;
+        if (line.indexOf("SUITSUHAIRE") >= 0) currentEventIsSmokeAlarm = true;
+        
+        if (line.length() >= 18){
+            currentTimestamp = line.substring(0, 18);
+            currentTimestamp.trim();
+        }
         // SEND PREVIOUS EVENT
-        if (!currentEvent.isEmpty())
-        {
+        if (!currentEvent.isEmpty()){
             queueEmail(
                 currentSubject,
                 formatHtml(currentEvent)
             );
         }
-
         // START NEW EVENT
         currentEvent = line + "\n";
-
-        if (line.length() >= 46)
-        {
+        if (line.length() >= 46){
             currentSubject = line.substring(23, 46);
             currentSubject.trim();
         }
-        else
-        {
-            currentSubject = "VAO21 EVENT";
-        }
+        else currentSubject = "VAO21 EVENT";
+        
     }
-    else
-    {
-        currentEvent += line + "\n";
-    }
-
+    else currentEvent += line + "\n";  
     lastEventTime = millis();
 }
   void handleGarbage() {
