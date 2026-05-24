@@ -8,11 +8,6 @@
 #include "certs.h"
 #include "ethernet_shared.h"
 
-//const char* mqtt_server ="739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
-//const int mqtt_port = 8883;
-//const char* MQTT_USER = "esp8685";
-//const char* MQTT_PASS = "#V#G.bU8n6DwN44";
-
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
@@ -21,6 +16,8 @@ PubSubClient mqtt(sslClient);
 
 unsigned long lastReconnect = 0;
 unsigned long lastHeartbeat = 0;
+volatile bool detectorEmailRequest = false;
+volatile bool clearDetectorsRequest = false;
 
 void mqttCallback(char* topic, byte* payload, unsigned int length)
 {
@@ -35,15 +32,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
 
     if (String(topic) == "vao21/cmd")
     {
-        if (msg == "reboot")
-        {
+        if (msg == "reboot"){
             delay(1000);
             ESP.restart();
         }
-
-        if (msg == "ping")
-        {
+        if (msg == "ping"){
             mqtt.publish("vao21/status", "online");
+        }
+        if (msg == "list"){
+            detectorEmailRequest = true;
+        }
+        if (msg == "clear"){
+            clearDetectorsRequest = true;
         }
     }
 }
@@ -67,7 +67,6 @@ bool mqttReconnect()
         Serial.println("[MQTT] Connected");
         return true;
     }
-
     Serial.printf(
         "[MQTT] Failed rc=%d\n",
         mqtt.state());
@@ -87,10 +86,8 @@ void mqttLoop()
 {
     if (!mqtt.connected())
     {
-        if (millis() - lastReconnect > 5000)
-        {
+        if (millis() - lastReconnect > 5000){
             lastReconnect = millis();
-
             mqttReconnect();
         }
 
@@ -99,10 +96,8 @@ void mqttLoop()
 
     mqtt.loop();
 
-    if (millis() - lastHeartbeat > 60000)
-    {
+    if (millis() - lastHeartbeat > 60000){
         lastHeartbeat = millis();
-
         mqtt.publish(
             "vao21/heartbeat",
             String(millis()).c_str());
@@ -112,16 +107,15 @@ void mqttLoop()
 void mqttPublish(
     const String &topic,
     const String &payload)
-{
-    if (mqtt.connected())
     {
-        mqtt.publish(
-            topic.c_str(),
-            payload.c_str());
+        if (mqtt.connected())
+        {
+            mqtt.publish(
+                topic.c_str(),
+                payload.c_str());
+        }
     }
-}
 
-bool mqttConnected()
-{
+bool mqttConnected(){
     return mqtt.connected();
 }

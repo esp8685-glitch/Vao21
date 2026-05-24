@@ -18,3 +18,4 @@ std::vector<String> readDetectorListFile();
 // Check if address exists
 bool detectorExists(const String &address);
 void sendDetectorListEmail();
+bool clearDetectorList();
