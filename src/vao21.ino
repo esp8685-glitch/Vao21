@@ -70,11 +70,6 @@ void setup()
 
     ethernetConnect();
     initEmailSystem();
-    IPAddress testIP;
-
-if (Ethernet.hostByName("google.com",testIP))
-{writeLog("DNS OK: " + testIP.toString());}
-else {writeLog("DNS FAIL");}
     mqttSetup();
     
     //Serial.println("BOOT 6");

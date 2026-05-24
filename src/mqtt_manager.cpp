@@ -15,7 +15,7 @@
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
-EthernetClient ethClient;
+extern EthernetClient ethClient;
 ESP_SSLClient sslClient;
 PubSubClient mqtt(sslClient);
 
