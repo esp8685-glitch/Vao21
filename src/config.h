@@ -40,7 +40,11 @@
 #define SD_MOSI  6
 #define SD_MISO  5
 #define SD_SCK   7
-
+// ===== MQTT =====
+#define MQTT_HOST "739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud"
+#define MQTT_PORT 8883
+#define MQTT_USER "esp8685"
+#define MQTT_PASS "#V#G.bU8n6DwN44"
 // ================= W5500 =================
 // Define W5500 pin assignments
 #define ETH_CS   14
@@ -57,7 +61,7 @@
 #define QUEUE_MAX_BACKOFF_MS 1800000UL
 #define QUEUE_STALE_INFLIGHT_MS 900000UL
 #define EMAIL_TASK_INTERVAL_MS 10000UL
-#define ETH_TASK_INTERVAL_MS 30000UL
+#define ETH_TASK_INTERVAL_MS 5000
 #define SMTP_VERBOSE_DIAGNOSTICS 0
 
 // =============================

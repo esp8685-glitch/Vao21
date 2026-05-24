@@ -76,10 +76,6 @@ bool ethernetConnect()
 if (dns == IPAddress(0,0,0,0))
 {
     writeLog("DNS INVALID -> SET 1.1.1.1");
-
-    //Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
-
-    dns = Ethernet.dnsServerIP();
 }
     unlockEthernetBus();
     writeLog("IP: " + ip.toString());
@@ -101,9 +97,7 @@ bool ethernetOK()
 {
     if (!lockEthernetBus(pdMS_TO_TICKS(2000)))
         return false;
-
     Ethernet.maintain();
-
     IPAddress ip = Ethernet.localIP();
 
     if (ip == IPAddress(0, 0, 0, 0))
@@ -113,21 +107,22 @@ bool ethernetOK()
         return false;
     }
 IPAddress dns = Ethernet.dnsServerIP();
-
 if (dns == IPAddress(0,0,0,0))
 {
     writeLog("DNS INVALID (DHCP issue)");
-    //Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
 }
     ethConnected = true;
     unlockEthernetBus();
-
     return true;
 }
 
 // ======================================================
 // MONITOR TASK
 // ======================================================
+IPAddress getIP()
+{
+    return Ethernet.localIP();
+}
 
 void ethernetTask(void *pv)
 {
@@ -147,7 +142,6 @@ void ethernetTask(void *pv)
                 }
             }
         }
-
         vTaskDelay(pdMS_TO_TICKS(ETH_TASK_INTERVAL_MS));
     }
 }
