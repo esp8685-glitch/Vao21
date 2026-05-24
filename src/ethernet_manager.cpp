@@ -71,9 +71,20 @@ bool ethernetConnect()
     ethConnected = true;
     IPAddress ip = Ethernet.localIP();
     IPAddress gateway = Ethernet.gatewayIP();
+    IPAddress dns = Ethernet.dnsServerIP();
+
+if (dns == IPAddress(0,0,0,0))
+{
+    writeLog("DNS INVALID -> SET 1.1.1.1");
+
+    Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
+
+    dns = Ethernet.dnsServerIP();
+}
     unlockEthernetBus();
     writeLog("IP: " + ip.toString());
     writeLog("Gateway: " + gateway.toString());
+    writeLog("DNS: " + dns.toString());
     if (syncSystemTime())
     {
         timeInitialized = true;
@@ -101,7 +112,13 @@ bool ethernetOK()
         unlockEthernetBus();
         return false;
     }
+IPAddress dns = Ethernet.dnsServerIP();
 
+if (dns == IPAddress(0,0,0,0))
+{
+    writeLog("DNS LOST");
+    Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
+}
     ethConnected = true;
     unlockEthernetBus();
 

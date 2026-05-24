@@ -1,16 +1,21 @@
 #include "mqtt_manager.h"
 #include <Arduino.h>
+#include <SPI.h>
 #include <Ethernet2.h>
-#include <WiFiClientSecure.h>
+#include <ESP_SSLClient.h>
 #include <PubSubClient.h>
+#include "certs.h"
 
-static const char* MQTT_HOST = "739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
-static const int   MQTT_PORT = 8883;
+const char* mqtt_server ="739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
+const int mqtt_port = 8883;
+const char* mqtt_user = "esp8685";
+const char* mqtt_pass = "#V#G.bU8n6DwN44";
 
-static const char* MQTT_USER = "esp8685";
-static const char* MQTT_PASS = "#V#G.bU8n6DwN44";
-
-WiFiClientSecure secureClient;
+/*
+ Root CA sertifikaat HiveMQ Cloud jaoks
+*/
+EthernetClient ethClient;
+ESP_SSLClient secureClient(&ethClient);
 PubSubClient mqtt(secureClient);
 
 unsigned long lastReconnect = 0;
@@ -57,11 +62,8 @@ bool mqttReconnect()
         "offline"))
     {
         mqtt.publish("vao21/status", "online", true);
-
         mqtt.subscribe("vao21/cmd");
-
         Serial.println("[MQTT] Connected");
-
         return true;
     }
 
@@ -74,13 +76,10 @@ bool mqttReconnect()
 
 void mqttSetup()
 {
-    secureClient.setInsecure();
-
-    mqtt.setServer(MQTT_HOST, MQTT_PORT);
-
+    secureClient.setCACert(HIVEMQ_CA_CERT);
+    mqtt.setServer(mqtt_server, mqtt_port);
     mqtt.setCallback(mqttCallback);
 }
-
 void mqttLoop()
 {
     if (!mqtt.connected())
