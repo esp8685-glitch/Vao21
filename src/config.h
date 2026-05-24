@@ -40,11 +40,6 @@
 #define SD_MOSI  6
 #define SD_MISO  5
 #define SD_SCK   7
-// ===== MQTT =====
-#define MQTT_HOST "739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud"
-#define MQTT_PORT 8883
-#define MQTT_USER "esp8685"
-#define MQTT_PASS "#V#G.bU8n6DwN44"
 // ================= W5500 =================
 // Define W5500 pin assignments
 #define ETH_CS   14

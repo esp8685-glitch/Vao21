@@ -1,4 +1,6 @@
 #include "config.h"
+#include "LittleFS.h"
+#include "config_manager.h"
 #include "storage.h"
 #include "logger.h"
 #include "email_queue.h"
@@ -52,28 +54,23 @@ void setup()
         while(true)
             delay(1000);
     }
-
+    if (!loadConfig())
+    {
+        Serial.println("[VAO21] Config load failed!");
+        while (1) delay(1000);
+    }
     if (!initStorage())
     {
         while(true)
             delay(1000);
     }
-
-    //writeLog("BOOT");
     recoverEmailQueue();
-
-    // Initialize detector manager
-    if (!initDetectorStorage())
-    {
+    if (!initDetectorStorage()){
         writeLog("WARNING: Failed to initialize detector storage");
     }
-
     ethernetConnect();
     initEmailSystem();
     mqttSetup();
-    
-    //Serial.println("BOOT 6");
-    //writeLog("vao21 boot");
 
     xTaskCreatePinnedToCore(
         ethernetTask,
