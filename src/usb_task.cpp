@@ -215,7 +215,7 @@ void processLine(String line){
     {
         if (!detectorExists(detectorAddr))
         {
-            if (addDetectorAddress(detectorAddr, currentTimestamp))
+            if (addOrUpdateDetector(detectorAddr, currentTimestamp))
             {
                 Serial.println("NEW DETECTOR: " + detectorAddr);
 
