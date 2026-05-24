@@ -16,29 +16,23 @@ static bool detectorAddressLess(const String &a, const String &b);
 
 bool initDetectorStorage()
 {
-    if (!lockSD(pdMS_TO_TICKS(2000)))
-    {
+    if (!lockSD(pdMS_TO_TICKS(2000))){
         writeLog("Failed to lock SD for detector initialization");
         return false;
     }
-
     // Create detectors list file if it doesn't exist
-    if (!SD.exists(DETECTOR_LIST_FILE))
-    {
+    if (!SD.exists(DETECTOR_LIST_FILE)){
         File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
-        if (f)
-        {
+        if (f){
             f.close();
             writeLog("Created detector list file");
         }
-        else
-        {
+        else{
             writeLog("Failed to create detector list file");
             unlockSD();
             return false;
         }
     }
-
     // Load existing detectors into cache
     File f = SD.open(DETECTOR_LIST_FILE, FILE_READ);
     if (f)
@@ -47,9 +41,13 @@ bool initDetectorStorage()
         {
             String line = f.readStringUntil('\n');
             line.trim();
-            if (line.length() > 0)
-            {
-                detectorCache.insert(line);
+            if (line.length() > 0){
+                int sep = line.indexOf('|');
+                if (sep > 0){
+                    String address = line.substring(0, sep);
+                    address.trim();
+                    detectorCache.insert(address);
+                }
             }
         }
         f.close();
@@ -67,42 +65,27 @@ bool initDetectorStorage()
     return true;
 }
 
-bool addDetectorAddress(const String &address)
-{
-    if (address.length() == 0)
-        return false;
-
-    // Check if already exists
-    if (detectorCache.find(address) != detectorCache.end())
-    {
-        return true; // Already exists, not an error
-    }
-
-    // Add to cache
+bool addDetectorAddress(const String &address, const String &timestamp){
+    if (address.length() == 0) return false;
+    // Duplicate check only by address
+    if (detectorCache.find(address) != detectorCache.end()) return true;
+    
     detectorCache.insert(address);
-
-    // Write to SD card
-    if (!lockSD(pdMS_TO_TICKS(2000)))
-    {
+    if (!lockSD(pdMS_TO_TICKS(2000))){
         writeLog("Failed to lock SD for detector write");
         return false;
     }
-
     File f = SD.open(DETECTOR_LIST_FILE, FILE_APPEND);
-    if (f)
-    {
-        f.println(address);
+    if (f){
+        f.println(address + "|" + timestamp);
         f.close();
         writeLog("Added detector: " + address);
         unlockSD();
         return true;
     }
-    else
-    {
-        writeLog("Failed to open detector list file for writing");
-        unlockSD();
-        return false;
-    }
+    writeLog("Failed to open detector list file");
+    unlockSD();
+    return false;
 }
 
 std::vector<String> getStoredDetectors()
