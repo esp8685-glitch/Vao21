@@ -77,7 +77,7 @@ if (dns == IPAddress(0,0,0,0))
 {
     writeLog("DNS INVALID -> SET 1.1.1.1");
 
-    Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
+    //Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
 
     dns = Ethernet.dnsServerIP();
 }
@@ -116,8 +116,8 @@ IPAddress dns = Ethernet.dnsServerIP();
 
 if (dns == IPAddress(0,0,0,0))
 {
-    writeLog("DNS LOST");
-    Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
+    writeLog("DNS INVALID (DHCP issue)");
+    //Ethernet.setDnsServerIP(IPAddress(1,1,1,1));
 }
     ethConnected = true;
     unlockEthernetBus();
