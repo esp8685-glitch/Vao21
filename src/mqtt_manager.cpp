@@ -4,19 +4,20 @@
 #include <Ethernet2.h>
 #include <ESP_SSLClient.h>
 #include <PubSubClient.h>
+#include "config.h"
 #include "certs.h"
 
-const char* mqtt_server ="739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
-const int mqtt_port = 8883;
-const char* mqtt_user = "esp8685";
-const char* mqtt_pass = "#V#G.bU8n6DwN44";
+//const char* mqtt_server ="739b8ed00a7a430ebe58d2dec6e7166b.s1.eu.hivemq.cloud";
+//const int mqtt_port = 8883;
+//const char* MQTT_USER = "esp8685";
+//const char* MQTT_PASS = "#V#G.bU8n6DwN44";
 
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
 EthernetClient ethClient;
-ESP_SSLClient secureClient(&ethClient);
-PubSubClient mqtt(secureClient);
+ESP_SSLClient sslClient;
+PubSubClient mqtt(sslClient);
 
 unsigned long lastReconnect = 0;
 unsigned long lastHeartbeat = 0;
@@ -76,8 +77,10 @@ bool mqttReconnect()
 
 void mqttSetup()
 {
-    secureClient.setCACert(HIVEMQ_CA_CERT);
-    mqtt.setServer(mqtt_server, mqtt_port);
+    sslClient.setClient(&ethClient);
+    sslClient.setCACert(HIVEMQ_CA_CERT);
+
+    mqtt.setServer(MQTT_HOST, MQTT_PORT);
     mqtt.setCallback(mqttCallback);
 }
 void mqttLoop()
