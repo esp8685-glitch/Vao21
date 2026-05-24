@@ -2,226 +2,214 @@
 #include "storage.h"
 #include "config.h"
 #include "logger.h"
-#include <algorithm>
-#include <set>
-
 #include "email_queue.h"
 
-// In-memory cache of detector addresses
-std::set<String> detectorCache;
-bool detectorCacheInitialized = false;
+#include <SD.h>
+#include <vector>
+#include <algorithm>
 
 const char *DETECTOR_LIST_FILE = "/detectors.txt";
-static bool detectorAddressLess(const String &a, const String &b);
 
+// =====================
+// RAM STATE
+// =====================
+std::map<String, DetectorInfo> detectorMap;
+
+// =====================
+// INIT STORAGE
+// =====================
 bool initDetectorStorage()
 {
-    if (!lockSD(pdMS_TO_TICKS(2000))){
-        writeLog("Failed to lock SD for detector initialization");
-        return false;
-    }
-    // Create detectors list file if it doesn't exist
-    if (!SD.exists(DETECTOR_LIST_FILE)){
-        File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
-        if (f){
-            f.close();
-            writeLog("Created detector list file");
-        }
-        else{
-            writeLog("Failed to create detector list file");
-            unlockSD();
-            return false;
-        }
-    }
-    // Load existing detectors into cache
-    File f = SD.open(DETECTOR_LIST_FILE, FILE_READ);
-    if (f)
-    {
-        while (f.available())
-        {
-            String line = f.readStringUntil('\n');
-            line.trim();
-            if (line.length() > 0){
-                int sep = line.indexOf('|');
-                if (sep > 0){
-                    String address = line.substring(0, sep);
-                    address.trim();
-                    detectorCache.insert(address);
-                }
-            }
-        }
-        f.close();
-        detectorCacheInitialized = true;
-        writeLog("Loaded " + String(detectorCache.size()) + " detectors from SD");
-    }
-    else
-    {
-        writeLog("Could not open detector list file for reading");
-        unlockSD();
-        return false;
-    }
-
-    unlockSD();
-    return true;
-}
-
-bool addDetectorAddress(const String &address, const String &timestamp){
-    if (address.length() == 0) return false;
-    // Duplicate check only by address
-    if (detectorCache.find(address) != detectorCache.end()) return true;
-    
-    detectorCache.insert(address);
-    if (!lockSD(pdMS_TO_TICKS(2000))){
-        writeLog("Failed to lock SD for detector write");
-        return false;
-    }
-    File f = SD.open(DETECTOR_LIST_FILE, FILE_APPEND);
-    if (f){
-        f.println(address + "|" + timestamp);
-        f.close();
-        writeLog("Added detector: " + address);
-        unlockSD();
-        return true;
-    }
-    writeLog("Failed to open detector list file");
-    unlockSD();
-    return false;
-}
-
-std::vector<String> getStoredDetectors()
-{
-    std::vector<String> result;
-    for (const auto &addr : detectorCache)
-    {
-        result.push_back(addr);
-    }
-    std::sort(result.begin(), result.end(), detectorAddressLess);
-    return result;
-}
-
-std::vector<String> readDetectorListFile()
-{
-    std::vector<String> result;
     if (!lockSD(pdMS_TO_TICKS(2000)))
     {
-        writeLog("Failed to lock SD for reading detectors list");
-        return result;
+        writeLog("Failed to lock SD for init");
+        return false;
+    }
+
+    if (!SD.exists(DETECTOR_LIST_FILE))
+    {
+        File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
+        if (f) f.close();
     }
 
     File f = SD.open(DETECTOR_LIST_FILE, FILE_READ);
     if (!f)
     {
-        writeLog("Failed to open detector list file for reading");
         unlockSD();
-        return result;
+        return false;
     }
+
+    detectorMap.clear();
 
     while (f.available())
     {
         String line = f.readStringUntil('\n');
         line.trim();
-        if (line.length() > 0)
+
+        int p1 = line.indexOf('|');
+        int p2 = line.lastIndexOf('|');
+
+        if (p1 > 0 && p2 > p1)
         {
-            result.push_back(line);
+            DetectorInfo d;
+            d.address = line.substring(0, p1);
+            d.lastTimestamp = line.substring(p1 + 1, p2);
+            d.eventCount = line.substring(p2 + 1).toInt();
+
+            detectorMap[d.address] = d;
         }
     }
+
     f.close();
     unlockSD();
 
-    std::sort(result.begin(), result.end(), detectorAddressLess);
-    return result;
+    writeLog("Detectors loaded: " + String(detectorMap.size()));
+    return true;
 }
 
-static bool detectorAddressLess(const String &a, const String &b)
-{
-    int dotA = a.indexOf('.');
-    int dotB = b.indexOf('.');
-
-    String intPartA = dotA >= 0 ? a.substring(0, dotA) : a;
-    String intPartB = dotB >= 0 ? b.substring(0, dotB) : b;
-
-    long valueA = intPartA.toInt();
-    long valueB = intPartB.toInt();
-    if (valueA != valueB)
-    {
-        return valueA < valueB;
-    }
-
-    String fracA = dotA >= 0 ? a.substring(dotA + 1) : String();
-    String fracB = dotB >= 0 ? b.substring(dotB + 1) : String();
-
-    int maxLen = fracA.length() > fracB.length() ? fracA.length() : fracB.length();
-    while (fracA.length() < maxLen) fracA += '0';
-    while (fracB.length() < maxLen) fracB += '0';
-
-    if (fracA != fracB)
-    {
-        return fracA < fracB;
-    }
-
-    return a < b;
-}
-
+// =====================
+// EXISTS CHECK
+// =====================
 bool detectorExists(const String &address)
 {
-    return detectorCache.find(address) != detectorCache.end();
+    return detectorMap.find(address) != detectorMap.end();
 }
 
-void sendDetectorListEmail()
+// =====================
+// NUMERIC SORT HELP
+// =====================
+static std::vector<DetectorInfo> getSortedDetectors()
 {
-    std::vector<String> detectors = getStoredDetectors();
+    std::vector<DetectorInfo> v;
 
-    String body;
-    body += "VAO21 Boot Detector List\r\n";
-    body += "========================\r\n\r\n";
+    for (const auto &p : detectorMap)
+        v.push_back(p.second);
 
-    if (detectors.empty())
-    {
-        body += "No detectors stored.\r\n";
-    }
-    else
-    {
-        body += "Total detectors: " + String(detectors.size()) + "\r\n\r\n";
-
-        for (size_t i = 0; i < detectors.size(); i++)
+    std::sort(v.begin(), v.end(),
+        [](const DetectorInfo &a, const DetectorInfo &b)
         {
-            body += detectors[i] + "\r\n";
-        }
+            return a.address.toFloat() < b.address.toFloat();
+        });
+
+    return v;
+}
+
+// =====================
+// ADD OR UPDATE
+// =====================
+bool addOrUpdateDetector(const String &address,
+                         const String &timestamp)
+{
+    if (address.length() == 0)
+        return false;
+
+    DetectorInfo &d = detectorMap[address];
+
+    if (d.address.length() == 0)
+    {
+        d.address = address;
+        d.eventCount = 0;
     }
 
-    queueEmail("VAO21 Detector List", body);
-
-    writeLog("Queued detector list email");
-}
-bool clearDetectorList()
-{
-    detectorCache.clear();
+    d.lastTimestamp = timestamp;
+    d.eventCount++;
 
     if (!lockSD(pdMS_TO_TICKS(2000)))
     {
-        writeLog("Failed to lock SD for clearing detector list");
+        writeLog("SD lock failed");
         return false;
     }
 
-    if (SD.exists(DETECTOR_LIST_FILE))
-    {
-        SD.remove(DETECTOR_LIST_FILE);
-    }
-
     File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
-
     if (!f)
     {
-        writeLog("Failed to recreate detector list file");
         unlockSD();
         return false;
     }
 
+    // SORTED WRITE (NUMERIC)
+    auto sorted = getSortedDetectors();
+
+    for (const auto &x : sorted)
+    {
+        f.println(x.address + "|" +
+                  x.lastTimestamp + "|" +
+                  String(x.eventCount));
+    }
+
     f.close();
+    unlockSD();
+
+    writeLog("Detector updated: " + address + " @ " + timestamp);
+    return true;
+}
+
+// =====================
+// CLEAR
+// =====================
+bool clearDetectorList()
+{
+    detectorMap.clear();
+
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+        return false;
+
+    SD.remove(DETECTOR_LIST_FILE);
+
+    File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
+    if (f) f.close();
 
     unlockSD();
 
     writeLog("Detector list cleared");
-
     return true;
+}
+
+// =====================
+// GETTERS
+// =====================
+std::vector<DetectorInfo> getStoredDetectors()
+{
+    return getSortedDetectors();
+}
+
+std::vector<String> readDetectorListFile()
+{
+    std::vector<String> result;
+
+    auto sorted = getSortedDetectors();
+
+    for (const auto &d : sorted)
+        result.push_back(d.address);
+
+    return result;
+}
+
+// =====================
+// EMAIL REPORT
+// =====================
+void sendDetectorListEmail()
+{
+    auto detectors = getSortedDetectors();
+
+    String body;
+    body += "VAO21 Detector Report\n";
+    body += "====================\n\n";
+
+    if (detectors.empty())
+    {
+        body += "No detectors found\n";
+    }
+    else
+    {
+        for (const auto &d : detectors)
+        {
+            body += d.address + " | " +
+                    d.lastTimestamp + " | count=" +
+                    String(d.eventCount) + "\n";
+        }
+    }
+
+    queueEmail("VAO21 Detector List", body);
+    writeLog("Detector email queued");
 }

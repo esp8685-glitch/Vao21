@@ -2,20 +2,21 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <map>
 
-// Initialize detector storage
+struct DetectorInfo
+{
+    String address;
+    String lastTimestamp;
+    uint32_t eventCount;
+};
+// Core API
 bool initDetectorStorage();
-
-// Add detector address to the list (prevents duplicates)
-bool addDetectorAddress(const String &address, const String &timestamp)
-
-// Get all stored detector addresses
-std::vector<String> getStoredDetectors();
-
-// Read detector addresses directly from the SD file
-std::vector<String> readDetectorListFile();
-
-// Check if address exists
-bool detectorExists(const String &address);
-void sendDetectorListEmail();
+bool addOrUpdateDetector(const String &address, const String &timestamp);
 bool clearDetectorList();
+bool detectorExists(const String &address);
+// Queries
+std::vector<DetectorInfo> getStoredDetectors();
+std::vector<String> readDetectorListFile();
+// Reporting
+void sendDetectorListEmail();
