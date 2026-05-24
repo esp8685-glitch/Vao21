@@ -11,7 +11,7 @@
 #include "config.h"
 #include "ethernet_manager.h"
 
-EthernetClient ethClient;
+extern EthernetClient ethClient;
 ESP_SSLClient *global_ssl = nullptr;
 static int lastCheckHour = -1;
 
