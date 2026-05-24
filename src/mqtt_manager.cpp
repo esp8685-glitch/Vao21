@@ -1,4 +1,5 @@
 #include "mqtt_manager.h"
+#include "config_manager.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Ethernet2.h>
@@ -55,8 +56,8 @@ bool mqttReconnect()
 
     if (mqtt.connect(
         clientId.c_str(),
-        MQTT_USER,
-        MQTT_PASS,
+        mqtt_user.c_str(),
+        mqtt_pass.c_str(),
         "vao21/status",
         1,
         true,
@@ -79,7 +80,7 @@ void mqttSetup()
     sslClient.setClient(&ethClient);
     sslClient.setCACert(HIVEMQ_CA_CERT);
 
-    mqtt.setServer(MQTT_HOST, MQTT_PORT);
+    mqtt.setServer(mqtt_host.c_str(), mqtt_port);
     mqtt.setCallback(mqttCallback);
 }
 void mqttLoop()
