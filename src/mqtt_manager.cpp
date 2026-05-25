@@ -19,6 +19,8 @@ unsigned long lastReconnect = 0;
 unsigned long lastHeartbeat = 0;
 volatile bool detectorEmailRequest = false;
 volatile bool clearDetectorsRequest = false;
+std::vector<String> mqttQueue;
+
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
     String msg;

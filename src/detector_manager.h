@@ -20,3 +20,4 @@ std::vector<DetectorInfo> getStoredDetectors();
 std::vector<String> readDetectorListFile();
 // Reporting
 void sendDetectorListEmail();
+bool removeDetector(const String &address);
