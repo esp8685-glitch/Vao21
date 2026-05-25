@@ -21,20 +21,6 @@
 
 #define DEVICE_NAME "VAO21"
 #define CONTROL_EMAIL_ENABLED true
-// =============================
-// BREVO SMTP
-// =============================
-#define SMTP_HOST "smtp-relay.brevo.com"
-#define SMTP_PORT 587
-
-#define SMTP_LOGIN "abad49001@smtp-brevo.com"
-#define SMTP_PASSWORD "qKwLfahk2V1RgMNc"
-
-#define AUTHOR_EMAIL "esp8685@gmail.com"
-#define AUTHOR_PASSWORD SMTP_PASSWORD
-
-#define RECIPIENT_EMAIL "esp8685@gmail.com"
-//#define RECIPIENT_EMAIL2 "it@epitec.ee"
 // ================= SD =================
 #define SD_CS    4
 #define SD_MOSI  6
