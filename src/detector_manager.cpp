@@ -213,3 +213,40 @@ void sendDetectorListEmail()
     queueEmail("VAO21 Detector List", body);
     writeLog("Detector email queued");
 }
+bool removeDetector(const String &address)
+{
+    auto it = detectorMap.find(address);
+
+    if (it == detectorMap.end())
+        return false;
+
+    detectorMap.erase(it);
+
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+        return false;
+
+    File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
+
+    if (!f)
+    {
+        unlockSD();
+        return false;
+    }
+
+    auto sorted = getSortedDetectors();
+
+    for (const auto &d : sorted)
+    {
+        f.println(d.address + "|" +
+                  d.lastTimestamp + "|" +
+                  String(d.eventCount));
+    }
+
+    f.close();
+
+    unlockSD();
+
+    writeLog("Detector removed: " + address);
+
+    return true;
+}

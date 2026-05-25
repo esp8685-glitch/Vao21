@@ -100,3 +100,4 @@ bool isDstEU(struct tm &utc);
 
 extern volatile bool detectorEmailRequest;
 extern volatile bool clearDetectorsRequest;
+std::vector<String> mqttQueue;
