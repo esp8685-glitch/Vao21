@@ -20,32 +20,33 @@ unsigned long lastHeartbeat = 0;
 volatile bool detectorEmailRequest = false;
 volatile bool clearDetectorsRequest = false;
 
-void mqttCallback(char* topic, byte* payload, unsigned int length)
-{
+void mqttCallback(char* topic, byte* payload, unsigned int length){
     String msg;
-
-    for (unsigned int i = 0; i < length; i++)
-    {
+    for (unsigned int i = 0; i < length; i++){
         msg += (char)payload[i];
     }
 
     Serial.printf("[MQTT] %s => %s\n", topic, msg.c_str());
-
     if (String(topic) == "vao21/cmd")
     {
+        mqttQueue.push_back(msg);
+        /*
         if (msg == "reboot"){
             delay(1000);
             ESP.restart();
         }
-        if (msg == "ping"){
-            mqtt.publish("vao21/status", "online");
-        }
-        if (msg == "list"){
-            detectorEmailRequest = true;
-        }
-        if (msg == "clear"){
-            clearDetectorsRequest = true;
-        }
+        if (msg == "ping")mqtt.publish("vao21/status", "online");
+        if (msg == "list")detectorEmailRequest = true;
+        if (msg == "clear")clearDetectorsRequest = true;
+
+        if msg.startswith("add_sensor:"):
+            sensor = msg.split(":")[1].strip()
+            add_sensor(sensor)
+        elif msg.startswith("remove_sensor:"):
+            sensor = msg.split(":")[1].strip()
+            remove_sensor(sensor)
+        elif msg == "list_sensors": print(load_sensors())
+        */
     }
 }
 
@@ -119,4 +120,35 @@ void mqttPublish(
 
 bool mqttConnected(){
     return mqtt.connected();
+}
+
+void processMqttCommand(const String &cmd){
+    if (cmd.startsWith("add_detector:"))
+    {
+        String address = cmd.substring(strlen("add_detector:"));
+        address.trim();
+        addOrUpdateDetector(address, "manual");
+    }
+    else if (cmd.startsWith("remove_detector:"))
+    {
+        String address = cmd.substring(strlen("remove_detector:"));
+        address.trim();
+        removeDetector(address);
+    }
+    else if (cmd == "clear_detectors"){clearDetectorList();}
+    else if (cmd == "email_detectors"){sendDetectorListEmail();}
+}
+
+void addSensor(String sensor)
+{
+    File f = LittleFS.open("/sensors.txt", FILE_APPEND);
+    if (!f)
+    {
+        Serial.println("Failed opening sensor file");
+        return;
+    }
+    f.println(sensor);
+    f.close();
+    Serial.print("Sensor added: ");
+    Serial.println(sensor);
 }

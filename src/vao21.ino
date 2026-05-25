@@ -124,6 +124,10 @@ void loop()
         }
     }
     processPendingCommands();
+    while (!mqttQueue.empty()){
+        processMqttCommand(mqttQueue.front());
+        mqttQueue.erase(mqttQueue.begin());
+    }
     vTaskDelay(
         1000 / portTICK_PERIOD_MS
     );
