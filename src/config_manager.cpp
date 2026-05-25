@@ -15,6 +15,7 @@ String smtp_pass;
 String FROM_EMAIL;
 String RECIPIENT_EMAIL;
 String RECIPIENT_EMAIL2;
+bool silentMode = false;
 
 bool loadConfig()
 {
@@ -47,7 +48,7 @@ bool loadConfig()
     mqtt_pass = doc["mqtt_pass"].as<String>();
 
     Serial.println("[CONFIG] Loaded MQTT config OK");
-    
+
     smtp_host = doc["smtp_host"].as<String>();
     smtp_port = doc["smtp_port"];
     smtp_user = doc["smtp_user"].as<String>();

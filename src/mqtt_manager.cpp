@@ -9,6 +9,8 @@
 #include "certs.h"
 #include "ethernet_shared.h"
 #include "detector_manager.h"
+#include "logger.h"
+
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
@@ -21,35 +23,14 @@ volatile bool detectorEmailRequest = false;
 volatile bool clearDetectorsRequest = false;
 std::vector<String> mqttQueue;
 
-
 void mqttCallback(char* topic, byte* payload, unsigned int length){
     String msg;
     for (unsigned int i = 0; i < length; i++){
         msg += (char)payload[i];
     }
-
     Serial.printf("[MQTT] %s => %s\n", topic, msg.c_str());
-    if (String(topic) == "vao21/cmd")
-    {
-        mqttQueue.push_back(msg);
-        /*
-        if (msg == "reboot"){
-            delay(1000);
-            ESP.restart();
-        }
-        if (msg == "ping")mqtt.publish("vao21/status", "online");
-        if (msg == "list")detectorEmailRequest = true;
-        if (msg == "clear")clearDetectorsRequest = true;
-
-        if msg.startswith("add_sensor:"):
-            sensor = msg.split(":")[1].strip()
-            add_sensor(sensor)
-        elif msg.startswith("remove_sensor:"):
-            sensor = msg.split(":")[1].strip()
-            remove_sensor(sensor)
-        elif msg == "list_sensors": print(load_sensors())
-        */
-    }
+    if (String(topic) == "vao21/cmd") mqttQueue.push_back(msg);
+    
 }
 
 bool mqttReconnect()
@@ -139,5 +120,13 @@ void processMqttCommand(const String &cmd){
     }
     else if (cmd == "clear_detectors"){clearDetectorList();}
     else if (cmd == "email_detectors"){sendDetectorListEmail();}
+    else if (cmd == "silent_on"){
+        silentMode = true;
+        logInfo("Silent mode enabled");
+    }
+    else if (cmd == "silent_off"){
+        silentMode = false;
+        logInfo("Silent mode disabled");
+    }
 }
 

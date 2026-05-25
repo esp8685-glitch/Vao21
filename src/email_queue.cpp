@@ -11,6 +11,7 @@
 #include "config.h"
 #include "ethernet_manager.h"
 #include "ethernet_shared.h"
+#include "config_manager.h"
 
 ESP_SSLClient *global_ssl = nullptr;
 static int lastCheckHour = -1;
@@ -590,8 +591,8 @@ static bool sendEmailMessage(
     printStackMark("BEFORE CONNECT");
 
     ok = smtp.connect(
-        SMTP_HOST,
-        SMTP_PORT,
+        smtp_host,
+        smtp_port,
         "",
         smtpCb,
         true
@@ -626,8 +627,8 @@ static bool sendEmailMessage(
     delay(1);
 
     ok = smtp.authenticate(
-        SMTP_LOGIN,
-        SMTP_PASSWORD,
+        smtp_user,
+        smtp_pass,
         readymail_auth_password
     );
 
@@ -663,7 +664,7 @@ static bool sendEmailMessage(
 
     msg.headers.add(
         rfc822_from,
-        String("ESP32 <") + AUTHOR_EMAIL + ">"
+        String("ESP32 <") + FROM_EMAIL + ">"
     );
 //---------------------
     msg.headers.add(rfc822_to, "My_ESP <" + String(RECIPIENT_EMAIL) + ">");
