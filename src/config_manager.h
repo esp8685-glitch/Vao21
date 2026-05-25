@@ -16,3 +16,4 @@ extern String smtp_pass;
 extern String FROM_EMAIL;
 extern String RECIPIENT_EMAIL;
 extern String RECIPIENT_EMAIL2;
+extern bool silentMode;

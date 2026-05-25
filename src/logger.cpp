@@ -1,6 +1,9 @@
+#include <Arduino.h>
 #include "config.h"
 #include "logger.h"
 #include "storage.h"
+#include "config_manager.h"   // for silentMode
+
 
 String getLogFileName()
 {
@@ -37,4 +40,21 @@ void writeLog(String msg)
     }
 
     Serial.println(msg);
+}
+
+void logInfo(const String &msg)
+{
+    if (!silentMode)
+        Serial.println("[INFO] " + msg);
+}
+
+void logWarn(const String &msg)
+{
+    if (!silentMode)
+        Serial.println("[WARN] " + msg);
+}
+
+void logError(const String &msg)
+{
+    Serial.println("[ERROR] " + msg); // always print errors
 }
