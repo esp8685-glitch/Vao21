@@ -1,0 +1,4 @@
+.pio/
+config.json
+*.json
+secrets*
