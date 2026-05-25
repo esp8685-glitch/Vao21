@@ -8,7 +8,7 @@
 #include "config.h"
 #include "certs.h"
 #include "ethernet_shared.h"
-
+#include "detector_manager.h"
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
 */
@@ -139,16 +139,3 @@ void processMqttCommand(const String &cmd){
     else if (cmd == "email_detectors"){sendDetectorListEmail();}
 }
 
-void addSensor(String sensor)
-{
-    File f = LittleFS.open("/sensors.txt", FILE_APPEND);
-    if (!f)
-    {
-        Serial.println("Failed opening sensor file");
-        return;
-    }
-    f.println(sensor);
-    f.close();
-    Serial.print("Sensor added: ");
-    Serial.println(sensor);
-}
