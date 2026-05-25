@@ -87,12 +87,13 @@ bool findTimestampInLine(const String &line, String &outTs)
         if (isdigit(line[i]) && isdigit(line[i+1]) && line[i+2] == '/' && isdigit(line[i+3]) && isdigit(line[i+4]) && line[i+5] == ' ' && isdigit(line[i+6]) && isdigit(line[i+7]) && line[i+8] == ':' && isdigit(line[i+9]) && isdigit(line[i+10]))
         {
             int len = 11;
-            // if seconds are present, extend to 14 or 18 as previous code used 18
             if (i + 13 <= line.length() && line[i+11] == ':' && isdigit(line[i+12]) && isdigit(line[i+13]))
                 len = 14;
-            // try to capture up to 18 chars if available (match previous behavior)
-            int tryLen = min(18, line.length() - i);
-            outTs = line.substring(i, tryLen);
+            // capture up to 18 characters or remaining length
+            int available = line.length() - i;
+            int tryLen = (available < 18) ? available : 18;
+            int endIndex = i + tryLen;
+            outTs = line.substring(i, endIndex);
             outTs.trim();
             return true;
         }
