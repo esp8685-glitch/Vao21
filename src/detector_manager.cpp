@@ -102,6 +102,11 @@ bool addOrUpdateDetector(const String &address,
 {
     if (address.length() == 0)
         return false;
+    String ts = timestamp;
+
+    // If caller passed a placeholder or no timestamp, use system timestamp
+    if (ts.length() == 0 || ts == "manual")
+        ts = getTimestamp();
 
     DetectorInfo &d = detectorMap[address];
 
@@ -111,7 +116,7 @@ bool addOrUpdateDetector(const String &address,
         d.eventCount = 0;
     }
 
-    d.lastTimestamp = timestamp;
+    d.lastTimestamp = ts;
     d.eventCount++;
 
     if (!lockSD(pdMS_TO_TICKS(2000)))
@@ -140,7 +145,7 @@ bool addOrUpdateDetector(const String &address,
     f.close();
     unlockSD();
 
-    writeLog("Detector updated: " + address + " @ " + timestamp);
+    writeLog("Detector updated: " + address + " @ " + ts);
     return true;
 }
 

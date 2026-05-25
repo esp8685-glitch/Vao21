@@ -78,6 +78,29 @@ bool tryExtractDetectorAddress(const String &line, String &address)
     return false;
 }
 
+// Try to find a timestamp inside the given line. Expected format: "DD/MM HH:MM" or "DD/MM HH:MM:SS"
+bool findTimestampInLine(const String &line, String &outTs)
+{
+    for (int i = 0; i + 16 <= line.length(); i++)
+    {
+        // minimal form "DD/MM HH:MM" -> length 11, but caller expects up to 18 like before
+        if (isdigit(line[i]) && isdigit(line[i+1]) && line[i+2] == '/' && isdigit(line[i+3]) && isdigit(line[i+4]) && line[i+5] == ' ' && isdigit(line[i+6]) && isdigit(line[i+7]) && line[i+8] == ':' && isdigit(line[i+9]) && isdigit(line[i+10]))
+        {
+            int len = 11;
+            // if seconds are present, extend to 14 or 18 as previous code used 18
+            if (i + 13 <= line.length() && line[i+11] == ':' && isdigit(line[i+12]) && isdigit(line[i+13]))
+                len = 14;
+            // try to capture up to 18 chars if available (match previous behavior)
+            int tryLen = min(18, line.length() - i);
+            outTs = line.substring(i, tryLen);
+            outTs.trim();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 class SerialFTDI : public EspUsbHostSerial_FTDI
 {
 private:
@@ -210,21 +233,25 @@ void processLine(String line){
 
     // Try to extract detector address from this line
     String detectorAddr;
-    if (currentEventIsSmokeAlarm &&
-        tryExtractDetectorAddress(line, detectorAddr))
+    if (currentEventIsSmokeAlarm && tryExtractDetectorAddress(line, detectorAddr))
     {
-        if (!detectorExists(detectorAddr))
+        String ts = currentTimestamp;
+        String lineTs;
+        if (findTimestampInLine(line, lineTs))
+            ts = lineTs;
+
+        bool existed = detectorExists(detectorAddr);
+
+        if (addOrUpdateDetector(detectorAddr, ts))
         {
-            if (addOrUpdateDetector(detectorAddr, currentTimestamp))
+            if (!existed)
             {
                 logInfo("NEW DETECTOR: " + detectorAddr);
-
-                writeLog(
-                    "Discovered detector: " +
-                    detectorAddr +
-                    " at " +
-                    currentTimestamp
-                );
+                writeLog("Discovered detector: " + detectorAddr + " at " + ts);
+            }
+            else
+            {
+                logInfo("UPDATED DETECTOR: " + detectorAddr + " @ " + ts);
             }
         }
     }
