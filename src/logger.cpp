@@ -39,7 +39,7 @@ void writeLog(String msg)
         unlockSD();
     }
 
-    Serial.println(msg);
+    logInfo(msg);
 }
 
 void logInfo(const String &msg)

@@ -49,14 +49,14 @@ void setup()
 
     if (!sdMutex || !ethMutex || !emailMutex || !spiMutex)
     {
-        Serial.println("MUTEX FAIL");
+        logError("MUTEX FAIL");
 
         while(true)
             delay(1000);
     }
     if (!loadConfig())
     {
-        Serial.println("[VAO21] Config load failed!");
+        logError("[VAO21] Config load failed!");
         while (1) delay(1000);
     }
     if (!initStorage())
@@ -124,10 +124,10 @@ void loop()
         }
     }
     processPendingCommands();
-    while (!mqttQueue.empty()){
-        processMqttCommand(mqttQueue.front());
-        mqttQueue.erase(mqttQueue.begin());
-    }
+    // while (!mqttQueue.empty()){
+    //     processMqttCommand(mqttQueue.front());
+    //     mqttQueue.erase(mqttQueue.begin());
+    // }
     vTaskDelay(
         1000 / portTICK_PERIOD_MS
     );

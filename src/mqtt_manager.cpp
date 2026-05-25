@@ -10,6 +10,7 @@
 #include "ethernet_shared.h"
 #include "detector_manager.h"
 #include "logger.h"
+#include "ethernet_manager.h"
 
 /*
  Root CA sertifikaat HiveMQ Cloud jaoks
@@ -21,42 +22,74 @@ unsigned long lastReconnect = 0;
 unsigned long lastHeartbeat = 0;
 volatile bool detectorEmailRequest = false;
 volatile bool clearDetectorsRequest = false;
-std::vector<String> mqttQueue;
+
+
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+String mqttQueue[MQTT_QUEUE_SIZE];
+volatile int mqIn = 0;
+volatile int mqOut = 0;
+
+void mqttDisconnect(){mqtt.disconnect();}
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
     String msg;
     for (unsigned int i = 0; i < length; i++){
         msg += (char)payload[i];
     }
-    Serial.printf("[MQTT] %s => %s\n", topic, msg.c_str());
-    if (String(topic) == "vao21/cmd") mqttQueue.push_back(msg);
-    
+    logInfo("[MQTT] " + String(topic) + " => " + msg);
+    if (String(topic) == "vao21/cmd")
+    {
+        int next = (mqIn + 1) % MQTT_QUEUE_SIZE;
+
+        if (next != mqOut)
+        {
+            portENTER_CRITICAL(&mux);
+            mqttQueue[mqIn] = msg;
+            mqIn = next;
+            portEXIT_CRITICAL(&mux);
+        }
+    }
 }
+    
 
 bool mqttReconnect()
 {
+    if (!lockEthernetBus(pdMS_TO_TICKS(10000)))
+    {
+        logError("[MQTT] ETH LOCK FAIL");
+        return false;
+    }
+
+    ethClient.stop();
+    delay(100);
+
     String clientId = "vao21-";
     clientId += String((uint32_t)ESP.getEfuseMac(), HEX);
 
-    if (mqtt.connect(
+    bool ok = mqtt.connect(
         clientId.c_str(),
         mqtt_user.c_str(),
         mqtt_pass.c_str(),
         "vao21/status",
         1,
         true,
-        "offline"))
+        "offline"
+    );
+
+    if (ok)
     {
         mqtt.publish("vao21/status", "online", true);
         mqtt.subscribe("vao21/cmd");
-        Serial.println("[MQTT] Connected");
-        return true;
+        logInfo("[MQTT] Connected");
     }
-    Serial.printf(
-        "[MQTT] Failed rc=%d\n",
-        mqtt.state());
+    else
+    {
+        logError("[MQTT] Failed rc=" + String(mqtt.state()));
+    }
 
-    return false;
+    unlockEthernetBus();
+
+    return ok;
 }
 
 void mqttSetup()
@@ -79,13 +112,31 @@ void mqttLoop()
         return;
     }
 
+if (lockEthernetBus(pdMS_TO_TICKS(1000)))
+{
     mqtt.loop();
+    unlockEthernetBus();
+}
+
+while (true)
+{
+    String cmd;
+    portENTER_CRITICAL(&mux);
+    if (mqOut == mqIn){
+        portEXIT_CRITICAL(&mux);
+        break;
+    }
+    cmd = mqttQueue[mqOut];
+    mqOut = (mqOut + 1) % MQTT_QUEUE_SIZE;
+    portEXIT_CRITICAL(&mux);
+    processMqttCommand(cmd);
+}
+//logInfo("MQTT queue processed");
 
     if (millis() - lastHeartbeat > 60000){
         lastHeartbeat = millis();
-        mqtt.publish(
-            "vao21/heartbeat",
-            String(millis()).c_str());
+        String hb = String(millis());
+        mqtt.publish("vao21/heartbeat", hb.c_str());
     }
 }
 
@@ -128,5 +179,12 @@ void processMqttCommand(const String &cmd){
         silentMode = false;
         logInfo("Silent mode disabled");
     }
+    else if (cmd == "reboot"){
+            delay(1000);
+            ESP.restart();
+    }
+    else if (cmd == "ping"){
+            mqtt.publish("vao21/status", "online");
+    }    
 }
 

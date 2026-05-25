@@ -12,6 +12,7 @@
 #include "ethernet_manager.h"
 #include "ethernet_shared.h"
 #include "config_manager.h"
+#include "mqtt_manager.h"
 
 ESP_SSLClient *global_ssl = nullptr;
 static int lastCheckHour = -1;
@@ -116,8 +117,8 @@ static void startTLSCallback(bool &success)
 
 static bool writeQueuedMailLocked(const QueuedMail &mail)
 {
-    DynamicJsonDocument doc(2048);
-
+    //DynamicJsonDocument doc(2048);
+    JsonDocument doc;
     doc["id"] = mail.id;
     doc["hash"] = mail.hash;
     doc["subject"] = mail.subject;
@@ -129,8 +130,7 @@ static bool writeQueuedMailLocked(const QueuedMail &mail)
 
     String tmpPath = mail.path + ".tmp";
     String bakPath = mail.path + ".bak";
-
-    SD.remove(tmpPath.c_str());
+    if (SD.exists(tmpPath.c_str())) SD.remove(tmpPath.c_str());
 
     File tmp = SD.open(tmpPath.c_str(), FILE_WRITE);
     if (!tmp)
@@ -146,7 +146,7 @@ static bool writeQueuedMailLocked(const QueuedMail &mail)
     tmp.flush();
     tmp.close();
 
-    SD.remove(bakPath.c_str());
+    if (SD.exists(bakPath.c_str())) SD.remove(bakPath.c_str());
 
     bool hadOriginal = SD.exists(mail.path.c_str());
 
@@ -177,8 +177,8 @@ static bool readQueuedMailLocked(const String &path, QueuedMail &mail)
 
     if (!f)
         return false;
-
-    DynamicJsonDocument doc(2048);
+    JsonDocument doc;
+    //DynamicJsonDocument doc(2048);
     DeserializationError err = deserializeJson(doc, f);
     f.close();
 
@@ -483,25 +483,24 @@ void recoverEmailQueue()
         writeLog("Queue recovery: recovered=" + String(recovered));
 }
 
-void queueEmail(String subject, String body)
+bool queueEmail(String subject, String body)
 {
     String hash = sha1String(subject + "\n" + body);
 
     if (!lockSD(pdMS_TO_TICKS(5000)))
     {
         writeLog("Queue: SD lock failed");
-        return;
+        return false;
     }
 
     String sentPath = sentHashPath(hash);
     String pendingPath = pendingHashPath(hash);
     bool duplicate = SD.exists(sentPath.c_str()) || SD.exists(pendingPath.c_str());
 
-    if (duplicate)
-    {
+    if (duplicate){
         unlockSD();
-        Serial.println("Queue: duplicate blocked");
-        return;
+        logInfo("EMAIL DUPLICATE BLOCKED hash=" + hash);
+        return false;
     }
 
     QueuedMail mail;
@@ -529,11 +528,12 @@ void queueEmail(String subject, String body)
     }
 
     unlockSD();
-
-    if (saved)
-        Serial.println("Queue: email queued " + mail.id);
-    else
-        writeLog("Queue: write failed " + mail.id);
+    if (saved){
+        logInfo("EMAIL QUEUED id=" + mail.id);
+        return true;
+    }
+    logError("Queue: write failed " + mail.id);
+    return false;
 }
 
 static bool sendEmailMessage(
@@ -562,7 +562,7 @@ static bool sendEmailMessage(
     printStackMark("SMTP start");
 
     Serial.println();
-    Serial.println("Preparing SMTP...");
+    logInfo("Preparing SMTP...");
 
     Serial.printf(
         "Free heap before send: %u\n",
@@ -576,6 +576,7 @@ static bool sendEmailMessage(
 
     ssl.setClient(&ethClient);
     ssl.setInsecure();
+    //ssl.setCACert(BREVO_CA_CERT);
     ssl.enableSSL(false);
 
     global_ssl = &ssl;
@@ -587,8 +588,9 @@ static bool sendEmailMessage(
         true
     );
 
-    Serial.println("SMTP: connecting");
+    logInfo("SMTP: connecting");
     printStackMark("BEFORE CONNECT");
+    mqttDisconnect();
 
     ok = smtp.connect(
         smtp_host,
@@ -604,7 +606,7 @@ static bool sendEmailMessage(
     {
         SMTPStatus status = smtp.status();
         error = "SMTP CONNECT FAILED status=" + String(status.statusCode) + " error=" + String(status.errorCode) + " " + status.text;
-        Serial.println("SMTP: connect failed");
+        logError("SMTP: connect failed");
 
         ethClient.stop();
         delay(200);
@@ -619,8 +621,8 @@ static bool sendEmailMessage(
         return false;
     }
 
-    Serial.println("SMTP: connected");
-    Serial.println("SMTP: authenticating");
+    logInfo("SMTP: connected");
+    logInfo("SMTP: authenticating");
     printStackMark("BEFORE AUTH");
 
     yield();
@@ -638,7 +640,7 @@ static bool sendEmailMessage(
     {
         SMTPStatus status = smtp.status();
         error = "SMTP AUTH FAILED status=" + String(status.statusCode) + " error=" + String(status.errorCode) + " " + status.text;
-        Serial.println("SMTP: auth failed");
+        logError("SMTP: auth failed");
 
         ethClient.stop();
         delay(200);
@@ -653,7 +655,7 @@ static bool sendEmailMessage(
         return false;
     }
 
-    Serial.println("SMTP: auth ok");
+    logInfo("SMTP: auth ok");
 
     SMTPMessage msg;
 
@@ -667,10 +669,18 @@ static bool sendEmailMessage(
         String("ESP32 <") + FROM_EMAIL + ">"
     );
 //---------------------
-    msg.headers.add(rfc822_to, "My_ESP <" + String(RECIPIENT_EMAIL) + ">");
-    #ifdef RECIPIENT_EMAIL2
-    msg.headers.add(rfc822_to, "Erik <" + String(RECIPIENT_EMAIL2) + ">");
-    #endif
+msg.headers.add(
+    rfc822_to,
+    "My_ESP <" + RECIPIENT_EMAIL + ">"
+);
+
+if (RECIPIENT_EMAIL2.length() > 0)
+{
+    msg.headers.add(
+        rfc822_to,
+        "Erik <" + RECIPIENT_EMAIL2 + ">"
+    );
+}
 //----------------------
     if (messageId != nullptr && strlen(messageId) > 0)
     {
@@ -697,7 +707,7 @@ static bool sendEmailMessage(
 
     msg.timestamp = time(nullptr);
 
-    Serial.println("SMTP: sending");
+    logInfo("SMTP: sending");
     printStackMark("BEFORE SEND");
 
     ok = smtp.send(msg);
@@ -706,13 +716,13 @@ static bool sendEmailMessage(
 
     if (ok)
     {
-        Serial.println("SMTP: sent");
+        logInfo("SMTP: sent");
     }
     else
     {
         SMTPStatus status = smtp.status();
         error = "EMAIL FAILED status=" + String(status.statusCode) + " error=" + String(status.errorCode) + " " + status.text;
-        Serial.println("SMTP: send failed");
+        logError("SMTP: send failed");
     }
 
     delay(200);
@@ -731,7 +741,8 @@ static bool sendEmailMessage(
     );
 
     unlockEthernetBus();
-
+    delay(500);
+    mqttReconnect();
     return ok;
 }
 
@@ -829,9 +840,8 @@ void handleHourlyCheck()
     {
         lastCheckHour = timeinfo.tm_hour;
 
-        String body =
-            "check<br>" +
-            getTimestamp();
+        String body = "check<br>";
+        body += getTimestamp();
 
         queueEmail(
             "check",

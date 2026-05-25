@@ -7,10 +7,10 @@ unsigned long lastTimeSync = 0;
 bool syncSystemTime() {
     struct tm utc;
 
-    Serial.println("Syncing time...");
+    logInfo("Syncing time...");
 
     if (!getHttpTime(utc)) {
-        Serial.println("Time sync FAILED");
+        logError("Time sync FAILED");
         return false;
     }
 
@@ -21,7 +21,7 @@ bool syncSystemTime() {
     timeInitialized = true;
     lastTimeSync = millis();
 
-    Serial.println("Time sync OK");
+    logInfo("Time sync OK");
     writeLog("Time synchronized: " + getTimestamp());
     return true;
 }
@@ -45,7 +45,7 @@ bool getHttpTime(struct tm &timeinfo) {
     EthernetClient client;
 
     if (!client.connect("google.com", 80)) {
-        Serial.println("Connection failed");
+        logError("Connection failed");
         return false;
     }
 

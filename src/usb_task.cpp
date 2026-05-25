@@ -190,23 +190,23 @@ void processLine(String line){
     command.toUpperCase();
     if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
     {
-        Serial.println("DETECTOR LIST:");
+        logInfo("DETECTOR LIST:");
         std::vector<String> detectors = readDetectorListFile();
         if (detectors.empty())
         {
-            Serial.println("No detectors found or failed to read detector list file.");
+            logError("No detectors found or failed to read detector list file.");
         }
         else
         {
             for (const auto &det : detectors)
             {
-                Serial.println(det);
+                logInfo(det);
             }
         }
         return;
     }
 
-    Serial.println("USB RX: " + line);
+    logInfo("USB RX: " + line);
 
     // Try to extract detector address from this line
     String detectorAddr;
@@ -217,7 +217,7 @@ void processLine(String line){
         {
             if (addOrUpdateDetector(detectorAddr, currentTimestamp))
             {
-                Serial.println("NEW DETECTOR: " + detectorAddr);
+                logInfo("NEW DETECTOR: " + detectorAddr);
 
                 writeLog(
                     "Discovered detector: " +
@@ -288,17 +288,17 @@ SerialFTDI usbSerial;
 
 void printDetectorListToSerial()
 {
-    Serial.println("DETECTOR LIST:");
+    logInfo("DETECTOR LIST:");
     std::vector<String> detectors = readDetectorListFile();
     if (detectors.empty())
     {
-        Serial.println("No detectors found or failed to read detector list file.");
+        logError("No detectors found or failed to read detector list file.");
         return;
     }
 
     for (const auto &det : detectors)
     {
-        Serial.println(det);
+        logInfo(det);
     }
 }
 

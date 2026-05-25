@@ -1,5 +1,6 @@
 #include "config.h"
 #include "storage.h"
+#include "logger.h"
 
 bool lockSPI(TickType_t timeoutTicks)
 {
@@ -44,10 +45,10 @@ bool initStorage()
     digitalWrite(ETH_CS, HIGH);
     if (!SD.begin(SD_CS, sdSpiBus, 10000000))
     {
-        Serial.println("SD FAIL");
+        logError("SD FAIL");
         return false;
     }
-    Serial.println("SD OK");
+    logInfo("SD OK");
     if (!lockSD())
         return false;
     const char *dirs[] = {"/logs", "/queue", "/sent", "/failed", "/hash"};
@@ -62,11 +63,11 @@ bool initStorage()
         test.println("TEST");
         test.close();
 
-        Serial.println("SD WRITE OK");
+        logInfo("SD WRITE OK");
     }
     else
     {
-        Serial.println("SD WRITE FAIL");
+        logError("SD WRITE FAIL");
     }
     unlockSD();
     return true;

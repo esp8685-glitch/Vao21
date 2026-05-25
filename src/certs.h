@@ -32,3 +32,9 @@ drgNSdjtw/IQb2SQu6gf5x+TyQ9I448UKTceT8f6gDLHlde1pgaMqM74oNpiHzbN
 fZZlNQFADj8GuTXf
 -----END CERTIFICATE-----
 )EOF";
+
+static const char *BREVO_CA_CERT = R"EOF(
+-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----
+)EOF";

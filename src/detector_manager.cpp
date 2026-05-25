@@ -154,7 +154,8 @@ bool clearDetectorList()
     if (!lockSD(pdMS_TO_TICKS(2000)))
         return false;
 
-    SD.remove(DETECTOR_LIST_FILE);
+    // SD.remove(DETECTOR_LIST_FILE);
+    if (SD.exists(DETECTOR_LIST_FILE)) SD.remove(DETECTOR_LIST_FILE);
 
     File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
     if (f) f.close();
@@ -209,9 +210,12 @@ void sendDetectorListEmail()
                     String(d.eventCount) + "\n";
         }
     }
-
-    queueEmail("VAO21 Detector List", body);
-    writeLog("Detector email queued");
+    if (queueEmail("VAO21 Detector List", body)){
+        logInfo("Detector email queued");
+    }
+    else{
+        logInfo("Detector email skipped");
+    }
 }
 bool removeDetector(const String &address)
 {

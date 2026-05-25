@@ -86,4 +86,8 @@ bool isDstEU(struct tm &utc);
 
 extern volatile bool detectorEmailRequest;
 extern volatile bool clearDetectorsRequest;
-extern std::vector<String> mqttQueue;
+
+#define MQTT_QUEUE_SIZE 10
+extern String mqttQueue[MQTT_QUEUE_SIZE];
+extern volatile int mqIn;
+extern volatile int mqOut;
