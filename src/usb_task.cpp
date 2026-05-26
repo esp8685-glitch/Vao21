@@ -81,19 +81,14 @@ bool tryExtractDetectorAddress(const String &line, String &address)
 // Try to find a timestamp inside the given line. Expected format: "DD/MM HH:MM" or "DD/MM HH:MM:SS"
 bool findTimestampInLine(const String &line, String &outTs)
 {
-    for (int i = 0; i + 16 <= line.length(); i++)
+    for (int i = 0; i + 11 <= line.length(); i++)
     {
-        // minimal form "DD/MM HH:MM" -> length 11, but caller expects up to 18 like before
         if (isdigit(line[i]) && isdigit(line[i+1]) && line[i+2] == '/' && isdigit(line[i+3]) && isdigit(line[i+4]) && line[i+5] == ' ' && isdigit(line[i+6]) && isdigit(line[i+7]) && line[i+8] == ':' && isdigit(line[i+9]) && isdigit(line[i+10]))
         {
             int len = 11;
-            if (i + 13 <= line.length() && line[i+11] == ':' && isdigit(line[i+12]) && isdigit(line[i+13]))
+            if (i + 14 <= line.length() && line[i+11] == ':' && isdigit(line[i+12]) && isdigit(line[i+13]))
                 len = 14;
-            // capture up to 18 characters or remaining length
-            int available = line.length() - i;
-            int tryLen = (available < 18) ? available : 18;
-            int endIndex = i + tryLen;
-            outTs = line.substring(i, endIndex);
+            outTs = line.substring(i, i + len);
             outTs.trim();
             return true;
         }
@@ -147,11 +142,8 @@ unsigned long lastEventTime = 0;
 
 bool isTimestampLine(const String &line)
 {
-    return line.length() > 16 &&
-           isdigit(line[0]) &&
-           isdigit(line[1]) &&
-           line[2] == '/' &&
-           isdigit(line[3]);
+    String ts;
+    return findTimestampInLine(line, ts);
 }
 String formatHtml(String text)
 {
@@ -261,8 +253,10 @@ void processLine(String line){
         currentEventIsSmokeAlarm = false;
         if (line.indexOf("SUITSUHAIRE") >= 0) currentEventIsSmokeAlarm = true;
         
-        if (line.length() >= 18){
-            currentTimestamp = line.substring(0, 18);
+        String lineTs;
+        if (findTimestampInLine(line, lineTs))
+        {
+            currentTimestamp = lineTs;
             currentTimestamp.trim();
         }
         // SEND PREVIOUS EVENT
