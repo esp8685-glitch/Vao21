@@ -81,14 +81,47 @@ bool tryExtractDetectorAddress(const String &line, String &address)
 // Try to find a timestamp inside the given line. Expected format: "DD/MM HH:MM" or "DD/MM HH:MM:SS"
 bool findTimestampInLine(const String &line, String &outTs)
 {
-    for (int i = 0; i + 11 <= line.length(); i++)
+    int L = line.length();
+
+    for (int i = 0; i < L; i++)
     {
-        if (isdigit(line[i]) && isdigit(line[i + 1]) && line[i + 2] == '/' && isdigit(line[i + 3]) && isdigit(line[i + 4]) && line[i + 5] == ' ' && isdigit(line[i + 6]) && isdigit(line[i + 7]) && line[i + 8] == ':' && isdigit(line[i + 9]) && isdigit(line[i + 10]))
+        // Need at least DD/MM -> positions i..i+4
+        if (i + 4 >= L)
+            break;
+
+        if (!(isdigit(line[i]) && isdigit(line[i + 1]) && line[i + 2] == '/' && isdigit(line[i + 3]) && isdigit(line[i + 4])))
+            continue;
+
+        int pos = i + 5; // position after DD/MM
+
+        // Optional year: /YYYY
+        if (pos < L && line[pos] == '/' && pos + 4 < L && isdigit(line[pos + 1]) && isdigit(line[pos + 2]) && isdigit(line[pos + 3]) && isdigit(line[pos + 4]))
         {
-            int len = 11;
-            if (i + 14 <= line.length() && line[i + 11] == ':' && isdigit(line[i + 12]) && isdigit(line[i + 13]))
-                len = 14;
-            outTs = line.substring(i, i + len);
+            pos += 5; // skip '/YYYY'
+        }
+
+        // Skip whitespace
+        int j = pos;
+        while (j < L && isspace(line[j]))
+            j++;
+
+        // Optional separator like '-' or longer dashes
+        if (j < L && (line[j] == '-' || line[j] == '\u2013' || line[j] == '\u2014'))
+        {
+            j++;
+            while (j < L && isspace(line[j]))
+                j++;
+        }
+
+        // Now expect time HH:MM (optionally :SS)
+        if (j + 4 < L && isdigit(line[j]) && isdigit(line[j + 1]) && line[j + 2] == ':' && isdigit(line[j + 3]) && isdigit(line[j + 4]))
+        {
+            int end = j + 5; // exclusive
+            // optional :SS
+            if (end + 2 < L && line[end] == ':' && isdigit(line[end + 1]) && isdigit(line[end + 2]))
+                end += 3;
+
+            outTs = line.substring(i, end);
             outTs.trim();
             return true;
         }
