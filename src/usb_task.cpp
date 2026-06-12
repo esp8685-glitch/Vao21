@@ -480,22 +480,6 @@ public:
 
 SerialFTDI usbSerial;
 
-void printDetectorListToSerial()
-{
-    logInfo("DETECTOR LIST:");
-    std::vector<String> detectors = readDetectorListFile();
-    if (detectors.empty())
-    {
-        logError("No detectors found or failed to read detector list file.");
-        return;
-    }
-
-    for (const auto &det : detectors)
-    {
-        logInfo(det);
-    }
-}
-
 void handleSerialConsoleLine(const String &line)
 {
     String command = line;
@@ -504,7 +488,7 @@ void handleSerialConsoleLine(const String &line)
 
     if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
     {
-        printDetectorListToSerial();
+        sendDetectorListEmail();
         return;
     }
 }
