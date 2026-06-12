@@ -295,28 +295,6 @@ private:
         if (line.isEmpty())
             return;
 
-        // Handle console commands
-        String command = line;
-        command.trim();
-        command.toUpperCase();
-        if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
-        {
-            logInfo("DETECTOR LIST:");
-            std::vector<String> detectors = readDetectorListFile();
-            if (detectors.empty())
-            {
-                logError("No detectors found or failed to read detector list file.");
-            }
-            else
-            {
-                for (const auto &det : detectors)
-                {
-                    logInfo(det);
-                }
-            }
-            return;
-        }
-
         logInfo("USB RX: " + line);
 
         // Try to extract detector address from this line BEFORE checking if it's a timestamp
