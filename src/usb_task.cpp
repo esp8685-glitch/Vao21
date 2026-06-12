@@ -284,7 +284,7 @@ private:
             return;
         }
         //----------------
-        Serial.printf("[%lu] Received valid line: %s\n", millis(), line.c_str());
+        //Serial.printf("[%lu] Received valid line: %s\n", millis(), line.c_str());
 
         //-----------------    
         while (line.endsWith("\r") || line.endsWith("\n"))
