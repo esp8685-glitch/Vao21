@@ -106,6 +106,9 @@ private:
     unsigned long groupStartTime = 0;
     String currentTimestamp = "";
     bool currentEventIsSmokeAlarm = false;
+    String currentEvent = "";
+    String currentSubject = "";
+    unsigned long lastEventTime = 0;
 
     void onNew() override
     {
@@ -118,194 +121,232 @@ private:
         groupStartTime = 0;
     }
 
-  void onReceive(const uint8_t *data, const size_t length) override {
-    for (size_t i = 0; i < length; i++) {
-      uint8_t c = data[i];
-
-      if (isValidChar(c)) {
-        if (c == '\r' || c == '\n') {
-          if (lineBuffer.length() > 0) {
-            processLine(lineBuffer);
-            lineBuffer.clear();
-          }
-        } else {
-          lineBuffer += (char)c;
-        }
-      } else {
-        handleGarbage();
-      }
-    }
-  }
-String currentEvent = "";
-String currentSubject = "";
-unsigned long lastEventTime = 0;
-
-bool isTimestampLine(const String &line)
-{
-    String ts;
-    return findTimestampInLine(line, ts);
-}
-String formatHtml(String text)
-{
-    text.replace("\r\n", "\n");
-    text.replace("\r", "\n");
-
-    text.replace("&", "&amp;");
-    text.replace("<", "&lt;");
-    text.replace(">", "&gt;");
-
-    text.replace(" ", "&nbsp;");
-    text.replace("\n", "<br>");
-
-    return
-        "<div style='font-family: Arial; font-size: 10pt;'>"
-        + text +
-        "</div>";
-}
-void processLine(String line){
-
-    if (line.length() < 2) {
-      Serial.printf("Skipping too short 0_line: '%s'\n", line.c_str());
-      return;
-    }
-
-    if (!line.isEmpty() && !isValidLeadingChar(line[0])) {
-      line.remove(0, 1);
-    }
-    //-----------------
-    // Check for noise: a single uppercase letter followed by whitespace
-    if (line.length() > 2 && isupper(line[0]) && isspace(line[1])) {
-      int firstUsefulChar = 1;
-      // Skip over the letter and any spaces after it
-      while (firstUsefulChar < line.length() && isspace(line[firstUsefulChar])) {
-        firstUsefulChar++;
-      }
-      line = line.substring(firstUsefulChar);
-      Serial.printf("Filtered noise prefix, new line: '%s'\n", line.c_str());
-    }
-
-    if (line.length() < 2) {
-      Serial.printf("Skipping too short 1_line: '%s'\n", line.c_str());
-      return;
-    }
-    //----------------
-    Serial.printf("[%lu] Received valid line: %s\n", millis(), line.c_str());
-
-//-----------------    
-    //line.trim();
-    while (line.endsWith("\r") || line.endsWith("\n"))
+    void onReceive(const uint8_t *data, const size_t length) override
     {
-        line.remove(line.length() - 1);
-    }
-
-    if (line.isEmpty())
-        return;
-
-    String command = line;
-    command.trim();
-    command.toUpperCase();
-    if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
-    {
-        logInfo("DETECTOR LIST:");
-        std::vector<String> detectors = readDetectorListFile();
-        if (detectors.empty())
+        for (size_t i = 0; i < length; i++)
         {
-            logError("No detectors found or failed to read detector list file.");
-        }
-        else
-        {
-            for (const auto &det : detectors)
+            uint8_t c = data[i];
+
+            if (isValidChar(c))
             {
-                logInfo(det);
-            }
-        }
-        return;
-    }
-
-    logInfo("USB RX: " + line);
-
-    // Try to extract detector address from this line
-    String detectorAddr;
-    if (currentEventIsSmokeAlarm && tryExtractDetectorAddress(line, detectorAddr))
-    {
-        String ts = currentTimestamp;
-        String lineTs;
-        if (findTimestampInLine(line, lineTs))
-            ts = lineTs;
-
-        bool existed = detectorExists(detectorAddr);
-
-        if (addOrUpdateDetector(detectorAddr, ts))
-        {
-            if (!existed)
-            {
-                logInfo("NEW DETECTOR: " + detectorAddr);
-                writeLog("Discovered detector: " + detectorAddr + " at " + ts);
+                if (c == '\r' || c == '\n')
+                {
+                    if (lineBuffer.length() > 0)
+                    {
+                        processLine(lineBuffer);
+                        lineBuffer.clear();
+                    }
+                }
+                else
+                {
+                    lineBuffer += (char)c;
+                }
             }
             else
             {
-                logInfo("UPDATED DETECTOR: " + detectorAddr + " @ " + ts);
+                handleGarbage();
             }
         }
     }
 
-    if (isTimestampLine(line)){
-        currentEventIsSmokeAlarm = false;
-        if (line.indexOf("SUITSUHAIRE") >= 0) currentEventIsSmokeAlarm = true;
-        
-        String lineTs;
-        if (findTimestampInLine(line, lineTs))
+    bool isTimestampLine(const String &line)
+    {
+        String ts;
+        return findTimestampInLine(line, ts);
+    }
+
+    String formatHtml(String text)
+    {
+        text.replace("\r\n", "\n");
+        text.replace("\r", "\n");
+
+        text.replace("&", "&amp;");
+        text.replace("<", "&lt;");
+        text.replace(">", "&gt;");
+
+        text.replace(" ", "&nbsp;");
+        text.replace("\n", "<br>");
+
+        return
+            "<div style='font-family: Arial; font-size: 10pt;'>"
+            + text +
+            "</div>";
+    }
+
+    void processLine(String line)
+    {
+        if (line.length() < 2)
         {
-            currentTimestamp = lineTs;
-            currentTimestamp.trim();
+            Serial.printf("Skipping too short 0_line: '%s'\n", line.c_str());
+            return;
         }
-        // SEND PREVIOUS EVENT
-        if (!currentEvent.isEmpty()){
+
+        if (!line.isEmpty() && !isValidLeadingChar(line[0]))
+        {
+            line.remove(0, 1);
+        }
+        //-----------------
+        // Check for noise: a single uppercase letter followed by whitespace
+        if (line.length() > 2 && isupper(line[0]) && isspace(line[1]))
+        {
+            int firstUsefulChar = 1;
+            // Skip over the letter and any spaces after it
+            while (firstUsefulChar < line.length() && isspace(line[firstUsefulChar]))
+            {
+                firstUsefulChar++;
+            }
+            line = line.substring(firstUsefulChar);
+            Serial.printf("Filtered noise prefix, new line: '%s'\n", line.c_str());
+        }
+
+        if (line.length() < 2)
+        {
+            Serial.printf("Skipping too short 1_line: '%s'\n", line.c_str());
+            return;
+        }
+        //----------------
+        Serial.printf("[%lu] Received valid line: %s\n", millis(), line.c_str());
+
+        //-----------------    
+        while (line.endsWith("\r") || line.endsWith("\n"))
+        {
+            line.remove(line.length() - 1);
+        }
+
+        if (line.isEmpty())
+            return;
+
+        // Handle console commands
+        String command = line;
+        command.trim();
+        command.toUpperCase();
+        if (command == "LIST DETECTORS" || command == "DETECTORS" || command == "SHOW DETECTORS")
+        {
+            logInfo("DETECTOR LIST:");
+            std::vector<String> detectors = readDetectorListFile();
+            if (detectors.empty())
+            {
+                logError("No detectors found or failed to read detector list file.");
+            }
+            else
+            {
+                for (const auto &det : detectors)
+                {
+                    logInfo(det);
+                }
+            }
+            return;
+        }
+
+        logInfo("USB RX: " + line);
+
+        // Try to extract detector address from this line BEFORE checking if it's a timestamp
+        String detectorAddr;
+        if (currentEventIsSmokeAlarm && tryExtractDetectorAddress(line, detectorAddr))
+        {
+            String ts = currentTimestamp;
+            String lineTs;
+            if (findTimestampInLine(line, lineTs))
+                ts = lineTs;
+
+            bool existed = detectorExists(detectorAddr);
+
+            if (addOrUpdateDetector(detectorAddr, ts))
+            {
+                if (!existed)
+                {
+                    logInfo("NEW DETECTOR: " + detectorAddr);
+                    writeLog("Discovered detector: " + detectorAddr + " at " + ts);
+                }
+                else
+                {
+                    logInfo("UPDATED DETECTOR: " + detectorAddr + " @ " + ts);
+                }
+            }
+        }
+
+        // Check if this is a timestamp line (event header)
+        if (isTimestampLine(line))
+        {
+            currentEventIsSmokeAlarm = false;
+            if (line.indexOf("SUITSUHAIRE") >= 0)
+            {
+                currentEventIsSmokeAlarm = true;
+            }
+
+            String lineTs;
+            if (findTimestampInLine(line, lineTs))
+            {
+                currentTimestamp = lineTs;
+                currentTimestamp.trim();
+            }
+
+            // SEND PREVIOUS EVENT if it exists
+            if (!currentEvent.isEmpty())
+            {
+                queueEmail(
+                    currentSubject,
+                    formatHtml(currentEvent)
+                );
+                logInfo("Event queued: " + currentSubject);
+            }
+
+            // START NEW EVENT
+            currentEvent = line + "\n";
+            if (line.length() >= 46)
+            {
+                currentSubject = line.substring(23, 46);
+                currentSubject.trim();
+            }
+            else
+            {
+                currentSubject = "VAO21 EVENT";
+            }
+
+            logInfo("New event started: " + currentSubject);
+        }
+        else
+        {
+            // Append non-header lines to current event
+            currentEvent += line + "\n";
+        }
+
+        lastEventTime = millis();
+    }
+
+    void handleGarbage()
+    {
+        static int garbageCount = 0;
+        garbageCount++;
+
+        if (garbageCount > 5)
+        {
+            logInfo("Too much garbage! Dropping current line.");
+            lineBuffer.clear();
+            garbageCount = 0;
+        }
+    }
+
+public:
+    void checkTimeout()
+    {
+        if (currentEvent.isEmpty())
+            return;
+
+        if (millis() - lastEventTime > 5000)
+        {
             queueEmail(
                 currentSubject,
                 formatHtml(currentEvent)
             );
+
+            logInfo("Event timeout queued: " + currentSubject);
+            currentEvent.clear();
+            currentSubject.clear();
         }
-        // START NEW EVENT
-        currentEvent = line + "\n";
-        if (line.length() >= 46){
-            currentSubject = line.substring(23, 46);
-            currentSubject.trim();
-        }
-        else currentSubject = "VAO21 EVENT";
-        
     }
-    else currentEvent += line + "\n";  
-    lastEventTime = millis();
-}
-  void handleGarbage() {
-    static int garbageCount = 0;
-    garbageCount++;
-
-    if (garbageCount > 5) {
-      //Serial.println("Too much garbage! Dropping current line.");
-      lineBuffer.clear();
-      garbageCount = 0;
-    }
-  }
-public:
-void checkTimeout()
-{
-    if (currentEvent.isEmpty())
-        return;
-
-    if (millis() - lastEventTime > 5000)
-    {
-        queueEmail(
-            currentSubject,
-            formatHtml(currentEvent)
-        );
-
-        currentEvent.clear();
-        currentSubject.clear();
-    }
-}
 };
+
 SerialFTDI usbSerial;
 
 void printDetectorListToSerial()
