@@ -97,18 +97,64 @@ bool findTimestampInLine(const String &line, String &outTs)
     return false;
 }
 
+// Find lines that look like they *should* have timestamps (for diagnostics)
+String collectSuspectedTimestampLines(const String &line)
+{
+    String suspected = "";
+    
+    // Pattern 1: DD/MM but invalid time part
+    for (int i = 0; i + 5 <= line.length(); i++)
+    {
+        if (isdigit(line[i]) && isdigit(line[i+1]) && line[i+2] == '/' && isdigit(line[i+3]) && isdigit(line[i+4]))
+        {
+            // Found a date part - check if rest looks corrupted
+            if (i + 6 < line.length() && (line[i+5] == ' ' || isspace(line[i+5])))
+            {
+                // Likely corrupted timestamp - extract context
+                int start = (i > 0) ? i - 2 : 0;
+                int end = (i + 10 < line.length()) ? i + 10 : line.length();
+                suspected = line.substring(start, end);
+                return suspected;
+            }
+        }
+    }
+
+    // Pattern 2: Looks like time format HH:MM but not in proper context
+    for (int i = 0; i + 5 <= line.length(); i++)
+    {
+        if (isdigit(line[i]) && isdigit(line[i+1]) && line[i+2] == ':' && isdigit(line[i+3]) && isdigit(line[i+4]))
+        {
+            // Found time pattern - check context
+            if ((i < 3 || !isdigit(line[i-1])) && 
+                (i > 0 && (isspace(line[i-1]) || line[i-1] == '/')))
+            {
+                int start = (i > 3) ? i - 3 : 0;
+                int end = (i + 8 < line.length()) ? i + 8 : line.length();
+                suspected = line.substring(start, end);
+                return suspected;
+            }
+        }
+    }
+
+    return suspected;
+}
+
 class SerialFTDI : public EspUsbHostSerial_FTDI
 {
 private:
     String lineBuffer;
     std::vector<String> activeBuffer;
+    std::vector<String> garbageLineBuffer;  // Collect suspected timestamp lines
 
     unsigned long groupStartTime = 0;
     String currentTimestamp = "";
+    String lastGoodTimestamp = "00/00 00:00";  // Fallback timestamp
     bool currentEventIsSmokeAlarm = false;
     String currentEvent = "";
     String currentSubject = "";
     unsigned long lastEventTime = 0;
+    unsigned long garbageReportTime = 0;
+    static const unsigned long GARBAGE_REPORT_INTERVAL = 60000;  // Report every 60 seconds
 
     void onNew() override
     {
@@ -118,6 +164,7 @@ private:
         writeLog("Baud rate: " + BAUD_RATE);
         lineBuffer.clear();
         activeBuffer.clear();
+        garbageLineBuffer.clear();
         groupStartTime = 0;
     }
 
@@ -144,7 +191,7 @@ private:
             }
             else
             {
-                handleGarbage();
+                handleGarbage(String((char)c));
             }
         }
     }
@@ -244,7 +291,7 @@ private:
         String detectorAddr;
         if (currentEventIsSmokeAlarm && tryExtractDetectorAddress(line, detectorAddr))
         {
-            String ts = currentTimestamp;
+            String ts = currentTimestamp.isEmpty() ? lastGoodTimestamp : currentTimestamp;
             String lineTs;
             if (findTimestampInLine(line, lineTs))
                 ts = lineTs;
@@ -279,6 +326,7 @@ private:
             {
                 currentTimestamp = lineTs;
                 currentTimestamp.trim();
+                lastGoodTimestamp = currentTimestamp;  // Remember this timestamp
             }
 
             // SEND PREVIOUS EVENT if it exists
@@ -309,38 +357,89 @@ private:
         {
             // Append non-header lines to current event
             currentEvent += line + "\n";
+            
+            // If we haven't found a timestamp yet but this line looks like it should have one, log it
+            if (currentTimestamp.isEmpty() && line.indexOf("/") >= 0 && line.indexOf(":") >= 0)
+            {
+                logInfo("POSSIBLE CORRUPT TIMESTAMP in line: " + line);
+            }
         }
 
         lastEventTime = millis();
     }
 
-    void handleGarbage()
+    void handleGarbage(String garbageChar)
     {
         static int garbageCount = 0;
         garbageCount++;
 
+        // When we hit garbage, try to detect if the line contains suspected timestamp patterns
+        String suspected = collectSuspectedTimestampLines(lineBuffer);
+        if (suspected.length() > 0 && garbageLineBuffer.size() < 50)  // Keep buffer manageable
+        {
+            garbageLineBuffer.push_back(suspected);
+            logInfo("SUSPECTED TIMESTAMP LINE (garbage detected): " + suspected);
+        }
+
         if (garbageCount > 5)
         {
-            logInfo("Too much garbage! Dropping current line.");
+            logInfo("Too much garbage! Dropping current line: " + lineBuffer);
             lineBuffer.clear();
             garbageCount = 0;
         }
     }
 
+    void sendDiagnosticReport()
+    {
+        if (garbageLineBuffer.empty())
+            return;
+
+        String diagnosticBody = "DIAGNOSTIC REPORT: Suspected Timestamp Lines (for garbage filtering analysis)<br><br>";
+        diagnosticBody += "Total suspected lines collected: " + String(garbageLineBuffer.size()) + "<br><br>";
+        diagnosticBody += "<strong>Suspected Timestamp Patterns:</strong><br>";
+
+        for (size_t i = 0; i < garbageLineBuffer.size() && i < 100; i++)  // Limit to 100 for email size
+        {
+            diagnosticBody += "[" + String(i+1) + "] " + garbageLineBuffer[i] + "<br>";
+        }
+
+        diagnosticBody += "<br><strong>Last Good Timestamp:</strong> " + lastGoodTimestamp + "<br>";
+
+        queueEmail(
+            "VAO21 DIAGNOSTIC: Timestamp/Garbage Analysis",
+            formatHtml(diagnosticBody)
+        );
+
+        logInfo("Diagnostic report queued with " + String(garbageLineBuffer.size()) + " suspected lines");
+    }
+
 public:
     void checkTimeout()
     {
+        // Check for garbage report interval
+        if (millis() - garbageReportTime > GARBAGE_REPORT_INTERVAL && garbageLineBuffer.size() >= 10)
+        {
+            sendDiagnosticReport();
+            garbageLineBuffer.clear();
+            garbageReportTime = millis();
+        }
+
+        // Check for event timeout
         if (currentEvent.isEmpty())
             return;
 
         if (millis() - lastEventTime > 5000)
         {
+            // Use last good timestamp if current timestamp is missing
+            String ts = currentTimestamp.isEmpty() ? lastGoodTimestamp : currentTimestamp;
+            String eventWithTs = "TIMESTAMP: " + ts + "\n" + currentEvent;
+
             queueEmail(
                 currentSubject,
-                formatHtml(currentEvent)
+                formatHtml(eventWithTs)
             );
 
-            logInfo("Event timeout queued: " + currentSubject);
+            logInfo("Event timeout queued: " + currentSubject + " [TS: " + ts + "]");
             currentEvent.clear();
             currentSubject.clear();
         }
