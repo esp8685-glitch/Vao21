@@ -195,9 +195,6 @@ private:
             }
         }
     }
-    String currentEvent = "";
-    String currentSubject = "";
-    unsigned long lastEventTime = 0;
 
     bool isTimestampLine(const String &line)
     {
