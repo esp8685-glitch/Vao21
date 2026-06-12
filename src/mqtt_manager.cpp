@@ -171,6 +171,14 @@ void processMqttCommand(const String &cmd){
     }
     else if (cmd == "clear_detectors"){clearDetectorList();}
     else if (cmd == "email_detectors"){sendDetectorListEmail();}
+    else if (cmd == "enable_email2"){
+        email2Enabled = true;
+        logInfo("Email2 enabled");
+    }
+    else if (cmd == "disable_email2"){
+        email2Enabled = false;
+        logInfo("Email2 disabled");
+    }
     else if (cmd == "silent_on"){
         silentMode = true;
         logInfo("Silent mode enabled");

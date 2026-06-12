@@ -16,6 +16,7 @@ String smtp_pass;
 String FROM_EMAIL;
 String RECIPIENT_EMAIL;
 String RECIPIENT_EMAIL2;
+bool email2Enabled = false;
 bool silentMode = false;
 
 bool loadConfig()

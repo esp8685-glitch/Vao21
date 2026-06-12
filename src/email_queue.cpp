@@ -669,18 +669,18 @@ static bool sendEmailMessage(
         String("ESP32 <") + FROM_EMAIL + ">"
     );
 //---------------------
-msg.headers.add(
-    rfc822_to,
-    "My_ESP <" + RECIPIENT_EMAIL + ">"
-);
-
-if (RECIPIENT_EMAIL2.length() > 0)
-{
     msg.headers.add(
         rfc822_to,
-        "Erik <" + RECIPIENT_EMAIL2 + ">"
+        "My_ESP <" + RECIPIENT_EMAIL + ">"
     );
-}
+
+    if (email2Enabled && RECIPIENT_EMAIL2.length() > 0)
+    {
+        msg.headers.add(
+            rfc822_to,
+            "Erik <" + RECIPIENT_EMAIL2 + ">"
+        );
+    }
 //----------------------
     if (messageId != nullptr && strlen(messageId) > 0)
     {
@@ -689,11 +689,6 @@ if (RECIPIENT_EMAIL2.length() > 0)
             String("<") + messageId + "@" + DEVICE_NAME + ">"
         );
     }
-
-    // msg.headers.addCustom( #SUUR TÄHTSUS#
-    //     "X-Priority",
-    //     "1"
-    // );
 
     if (hash != nullptr && strlen(hash) > 0)
     {
