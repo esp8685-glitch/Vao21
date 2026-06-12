@@ -56,7 +56,7 @@ void setup()
     }
     if (!loadConfig())
     {
-        logError("[VAO21] Config load failed!");
+        logError("[VAO22] Config load failed!");
         while (1) delay(1000);
     }
     if (!initStorage())
@@ -103,7 +103,7 @@ xTaskCreatePinnedToCore(
 );
 /*
     queueEmail(
-        "VAO21 START " + String(millis()),
+        "VAO22 START " + String(millis()),
         "System boot successful " + String((uint32_t)esp_random(), HEX)
     );
 */

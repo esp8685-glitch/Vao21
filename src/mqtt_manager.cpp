@@ -37,7 +37,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
         msg += (char)payload[i];
     }
     logInfo("[MQTT] " + String(topic) + " => " + msg);
-    if (String(topic) == "vao21/cmd")
+    if (String(topic) == "vao22/cmd")
     {
         int next = (mqIn + 1) % MQTT_QUEUE_SIZE;
 
@@ -63,14 +63,14 @@ bool mqttReconnect()
     ethClient.stop();
     delay(100);
 
-    String clientId = "vao21-";
+    String clientId = "vao22-";
     clientId += String((uint32_t)ESP.getEfuseMac(), HEX);
 
     bool ok = mqtt.connect(
         clientId.c_str(),
         mqtt_user.c_str(),
         mqtt_pass.c_str(),
-        "vao21/status",
+        "vao22/status",
         1,
         true,
         "offline"
@@ -78,8 +78,8 @@ bool mqttReconnect()
 
     if (ok)
     {
-        mqtt.publish("vao21/status", "online", true);
-        mqtt.subscribe("vao21/cmd");
+        mqtt.publish("vao22/status", "online", true);
+        mqtt.subscribe("vao22/cmd");
         logInfo("[MQTT] Connected");
     }
     else
@@ -136,7 +136,7 @@ while (true)
     if (millis() - lastHeartbeat > 60000){
         lastHeartbeat = millis();
         String hb = String(millis());
-        mqtt.publish("vao21/heartbeat", hb.c_str());
+        mqtt.publish("vao22/heartbeat", hb.c_str());
     }
 }
 
@@ -192,7 +192,7 @@ void processMqttCommand(const String &cmd){
             ESP.restart();
     }
     else if (cmd == "ping"){
-            mqtt.publish("vao21/status", "online");
+            mqtt.publish("vao22/status", "online");
     }    
 }
 

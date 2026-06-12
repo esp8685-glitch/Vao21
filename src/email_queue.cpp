@@ -693,7 +693,7 @@ static bool sendEmailMessage(
     if (hash != nullptr && strlen(hash) > 0)
     {
         msg.headers.addCustom(
-            "X-VAO21-Hash",
+            "X-VAO22-Hash",
             hash
         );
     }

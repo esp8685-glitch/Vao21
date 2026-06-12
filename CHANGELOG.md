@@ -12,7 +12,7 @@
 
 ### Modified
 - `usb_task.cpp`: Enhanced to extract numeric detector IDs from incoming serial data
-- `vao21.ino`: Added detector manager initialization during startup
+- `vao22.ino`: Added detector manager initialization during startup
 
 ### Technical Details
 - Uses `std::set<String>` for fast in-memory caching

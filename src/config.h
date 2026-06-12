@@ -19,7 +19,7 @@
 // DEVICE
 // ======================================================
 
-#define DEVICE_NAME "VAO21"
+#define DEVICE_NAME "VAO22"
 #define CONTROL_EMAIL_ENABLED true
 // ================= SD =================
 #define SD_CS    4

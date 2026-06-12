@@ -106,9 +106,17 @@ bool findTimestampInLine(const String &line, String &outTs)
             j++;
 
         // Optional separator like '-' or longer dashes
-        if (j < L && (line[j] == '-' || line[j] == '\u2013' || line[j] == '\u2014'))
+        if (j < L && (line[j] == '-' || line.startsWith("\u2013", j) || line.startsWith("\u2014", j)))
         {
-            j++;
+            if (line.startsWith("\u2013", j) || line.startsWith("\u2014", j))
+            {
+                // UTF-8 dash sequences are 3 bytes long
+                j += 3;
+            }
+            else
+            {
+                j++;
+            }
             while (j < L && isspace(line[j]))
                 j++;
         }
@@ -358,7 +366,7 @@ private:
             }
             else
             {
-                currentSubject = "VAO21 EVENT";
+                currentSubject = "VAO22 EVENT";
             }
 
             logInfo("New event started: " + currentSubject);
@@ -416,7 +424,7 @@ private:
         diagnosticBody += "<br><strong>Last Good Timestamp:</strong> " + lastGoodTimestamp + "<br>";
 
         queueEmail(
-            "VAO21 DIAGNOSTIC: Timestamp/Garbage Analysis",
+            "VAO22 DIAGNOSTIC: Timestamp/Garbage Analysis",
             formatHtml(diagnosticBody)
         );
 

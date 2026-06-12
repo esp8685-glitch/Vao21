@@ -199,7 +199,7 @@ void sendDetectorListEmail()
     auto detectors = getSortedDetectors();
 
     String body;
-    body += "VAO21 Detector Report\n";
+    body += "VAO22 Detector Report\n";
     body += "====================\n\n";
 
     if (detectors.empty())
@@ -215,7 +215,7 @@ void sendDetectorListEmail()
                     String(d.eventCount) + "\n";
         }
     }
-    if (queueEmail("VAO21 Detector List", body)){
+    if (queueEmail("VAO22 Detector List", body)){
         logInfo("Detector email queued");
     }
     else{
