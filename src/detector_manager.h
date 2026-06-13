@@ -21,3 +21,6 @@ std::vector<String> readDetectorListFile();
 // Reporting
 void sendDetectorListEmail();
 bool removeDetector(const String &address);
+// Test Mode
+void setTestMode(bool enabled);
+bool getTestMode();
