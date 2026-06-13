@@ -9,12 +9,37 @@
 #include <algorithm>
 
 const char *DETECTOR_LIST_FILE = "/detectors.txt";
+const char *REMOVAL_REASONS_FILE = "/removal_reasons.txt";
 
 // =====================
 // RAM STATE
 // =====================
 std::map<String, DetectorInfo> detectorMap;
-bool testModeEnabled = false;
+
+// Helper function to convert reason to string
+static String reasonToString(RemovalReason reason)
+{
+    switch (reason)
+    {
+        case REASON_TEST_ALARM:
+            return "TEST_ALARM";
+        case REASON_REAL_FIRE:
+            return "REAL_FIRE";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+// Helper function to convert string to reason
+static RemovalReason stringToReason(const String &str)
+{
+    if (str == "TEST_ALARM")
+        return REASON_TEST_ALARM;
+    else if (str == "REAL_FIRE")
+        return REASON_REAL_FIRE;
+    else
+        return REASON_UNKNOWN;
+}
 
 // =====================
 // INIT STORAGE
@@ -30,6 +55,12 @@ bool initDetectorStorage()
     if (!SD.exists(DETECTOR_LIST_FILE))
     {
         File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
+        if (f) f.close();
+    }
+
+    if (!SD.exists(REMOVAL_REASONS_FILE))
+    {
+        File f = SD.open(REMOVAL_REASONS_FILE, FILE_WRITE);
         if (f) f.close();
     }
 
@@ -56,6 +87,7 @@ bool initDetectorStorage()
             d.address = line.substring(0, p1);
             d.lastTimestamp = line.substring(p1 + 1, p2);
             d.eventCount = line.substring(p2 + 1).toInt();
+            d.removalReason = REASON_UNKNOWN;
 
             detectorMap[d.address] = d;
         }
@@ -115,6 +147,7 @@ bool addOrUpdateDetector(const String &address,
     {
         d.address = address;
         d.eventCount = 0;
+        d.removalReason = REASON_UNKNOWN;
     }
 
     d.lastTimestamp = ts;
@@ -160,11 +193,14 @@ bool clearDetectorList()
     if (!lockSD(pdMS_TO_TICKS(2000)))
         return false;
 
-    // SD.remove(DETECTOR_LIST_FILE);
     if (SD.exists(DETECTOR_LIST_FILE)) SD.remove(DETECTOR_LIST_FILE);
+    if (SD.exists(REMOVAL_REASONS_FILE)) SD.remove(REMOVAL_REASONS_FILE);
 
     File f = SD.open(DETECTOR_LIST_FILE, FILE_WRITE);
     if (f) f.close();
+
+    File r = SD.open(REMOVAL_REASONS_FILE, FILE_WRITE);
+    if (r) r.close();
 
     unlockSD();
 
@@ -193,17 +229,22 @@ std::vector<String> readDetectorListFile()
 }
 
 // =====================
-// TEST MODE
+// REMOVAL REASON TRACKING
 // =====================
-void setTestMode(bool enabled)
+static void saveRemovalReason(const String &address, RemovalReason reason)
 {
-    testModeEnabled = enabled;
-    writeLog("Test mode: " + String(enabled ? "ON" : "OFF"));
-}
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+        return;
 
-bool getTestMode()
-{
-    return testModeEnabled;
+    File f = SD.open(REMOVAL_REASONS_FILE, FILE_APPEND);
+    if (f)
+    {
+        String timestamp = getTimestamp();
+        f.println(address + "|" + timestamp + "|" + reasonToString(reason));
+        f.close();
+    }
+
+    unlockSD();
 }
 
 // =====================
@@ -213,21 +254,61 @@ void sendDetectorListEmail()
 {
     auto detectors = getSortedDetectors();
 
+    // Count removal reasons from file
+    uint32_t countTestAlarm = 0;
+    uint32_t countRealFire = 0;
+    uint32_t countUnknown = 0;
+
+    if (!lockSD(pdMS_TO_TICKS(2000)))
+    {
+        writeLog("Failed to lock SD for email report");
+        return;
+    }
+
+    File f = SD.open(REMOVAL_REASONS_FILE, FILE_READ);
+    if (f)
+    {
+        while (f.available())
+        {
+            String line = f.readStringUntil('\n');
+            line.trim();
+
+            int p2 = line.lastIndexOf('|');
+            if (p2 > 0)
+            {
+                String reason = line.substring(p2 + 1);
+                if (reason == "TEST_ALARM")
+                    countTestAlarm++;
+                else if (reason == "REAL_FIRE")
+                    countRealFire++;
+                else
+                    countUnknown++;
+            }
+        }
+        f.close();
+    }
+
+    unlockSD();
+
     String body;
     body += "VAO22 Detector Report\n";
     body += "====================\n\n";
 
-    // Add test mode status
-    body += "Test Mode: " + String(testModeEnabled ? "ON" : "OFF") + "\n";
-    body += "====================\n\n";
+    // Statistics section
+    body += "Removal Statistics:\n";
+    body += "- Test Alarms (häired): " + String(countTestAlarm) + "\n";
+    body += "- Real Fires (päris tulekahju): " + String(countRealFire) + "\n";
+    body += "- Unknown Reason (teadmata põhjus): " + String(countUnknown) + "\n";
+    body += "\n====================\n\n";
 
+    // Active detectors
     if (detectors.empty())
     {
-        body += "No detectors found\n";
+        body += "No active detectors\n";
     }
     else
     {
-        body += "Detector Count: " + String(detectors.size()) + "\n\n";
+        body += "Active Detectors (" + String(detectors.size()) + "):\n";
         for (const auto &d : detectors)
         {
             body += d.address + " | " +
@@ -247,12 +328,15 @@ void sendDetectorListEmail()
     }
 }
 
-bool removeDetector(const String &address)
+bool removeDetector(const String &address, RemovalReason reason)
 {
     auto it = detectorMap.find(address);
 
     if (it == detectorMap.end())
         return false;
+
+    // Save removal reason before erasing
+    saveRemovalReason(address, reason);
 
     detectorMap.erase(it);
 
@@ -280,7 +364,8 @@ bool removeDetector(const String &address)
 
     unlockSD();
 
-    writeLog("Detector removed: " + address);
+    String reasonStr = reasonToString(reason);
+    writeLog("Detector removed: " + address + " (reason: " + reasonStr + ")");
 
     return true;
 }
