@@ -200,7 +200,7 @@ void sendDetectorListEmail()
 
     String body;
     body += "VAO22 Detector Report\n";
-    body += "====================\n\n";
+    body += "====================\n";
 
     if (detectors.empty())
     {
@@ -215,6 +215,7 @@ void sendDetectorListEmail()
                     String(d.eventCount) + "\n";
         }
     }
+    logInfo("VAO22 Detector List", body);
     if (queueEmail("VAO22 Detector List", body)){
         logInfo("Detector email queued");
     }

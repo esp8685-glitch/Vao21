@@ -19,9 +19,7 @@ SPIClass sdSpiBus(HSPI);
 void setup()
 {
     Serial.begin(115200);
-
     delay(2000);
-
     pinMode(SD_CS, OUTPUT);
     pinMode(ETH_CS, OUTPUT);
 

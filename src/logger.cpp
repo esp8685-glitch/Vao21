@@ -42,10 +42,23 @@ void writeLog(String msg)
     logInfo(msg);
 }
 
-void logInfo(const String &msg)
+// void logInfo(const String &msg)
+// {
+//     if (!silentMode)
+//         Serial.println("[INFO] " + msg);
+// }
+void logInfo(const String &subject, const String &body)
 {
     if (!silentMode)
-        Serial.println("[INFO] " + msg);
+    {
+        Serial.print("[INFO] ");
+        Serial.println(subject);
+
+        if (!body.isEmpty())
+        {
+            Serial.print(body);
+        }
+    }
 }
 
 void logWarn(const String &msg)
