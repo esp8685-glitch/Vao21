@@ -191,6 +191,7 @@ private:
     String currentTimestamp = "";
     String lastGoodTimestamp = "00/00 00:00";  // Fallback timestamp
     bool currentEventIsSmokeAlarm = false;
+    bool currentEventHasTimestampHeader = false;
     String currentEvent = "";
     String currentSubject = "";
     unsigned long lastEventTime = 0;
@@ -358,6 +359,7 @@ private:
             }
 
             // START NEW EVENT
+            currentEventHasTimestampHeader = true;
             currentEvent = line + "\n";
             if (line.length() >= 46)
             {
@@ -452,14 +454,25 @@ public:
             String ts = currentTimestamp.isEmpty() ? lastGoodTimestamp : currentTimestamp;
             String eventWithTs = "TIMESTAMP: " + ts + "\n" + currentEvent;
 
-            queueEmail(
-                currentSubject,
-                formatHtml(eventWithTs)
-            );
+            if (currentEventHasTimestampHeader)
+            {
+                queueEmail(
+                    currentSubject,
+                    formatHtml(currentEvent)
+                );
+            }
+            else
+            {
+                queueEmail(
+                    currentSubject,
+                    formatHtml(eventWithTs)
+                );
+            }
 
             logInfo("Event timeout queued: " + currentSubject + " [TS: " + ts + "]");
             currentEvent.clear();
             currentSubject.clear();
+            currentEventHasTimestampHeader = false;
         }
     }
 };
