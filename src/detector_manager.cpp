@@ -14,6 +14,7 @@ const char *DETECTOR_LIST_FILE = "/detectors.txt";
 // RAM STATE
 // =====================
 std::map<String, DetectorInfo> detectorMap;
+bool testModeEnabled = false;
 
 // =====================
 // INIT STORAGE
@@ -192,6 +193,20 @@ std::vector<String> readDetectorListFile()
 }
 
 // =====================
+// TEST MODE
+// =====================
+void setTestMode(bool enabled)
+{
+    testModeEnabled = enabled;
+    writeLog("Test mode: " + String(enabled ? "ON" : "OFF"));
+}
+
+bool getTestMode()
+{
+    return testModeEnabled;
+}
+
+// =====================
 // EMAIL REPORT
 // =====================
 void sendDetectorListEmail()
@@ -200,7 +215,11 @@ void sendDetectorListEmail()
 
     String body;
     body += "VAO22 Detector Report\n";
-    body += "====================\n";
+    body += "====================\n\n";
+
+    // Add test mode status
+    body += "Test Mode: " + String(testModeEnabled ? "ON" : "OFF") + "\n";
+    body += "====================\n\n";
 
     if (detectors.empty())
     {
@@ -208,6 +227,7 @@ void sendDetectorListEmail()
     }
     else
     {
+        body += "Detector Count: " + String(detectors.size()) + "\n\n";
         for (const auto &d : detectors)
         {
             body += d.address + " | " +
@@ -215,14 +235,18 @@ void sendDetectorListEmail()
                     String(d.eventCount) + "\n";
         }
     }
+
     logInfo("VAO22 Detector List", body);
-    if (queueEmail("VAO22 Detector List", body)){
+    if (queueEmail("VAO22 Detector List", body))
+    {
         logInfo("Detector email queued");
     }
-    else{
+    else
+    {
         logInfo("Detector email skipped");
     }
 }
+
 bool removeDetector(const String &address)
 {
     auto it = detectorMap.find(address);
