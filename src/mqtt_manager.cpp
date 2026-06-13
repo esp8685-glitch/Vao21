@@ -37,7 +37,22 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
         msg += (char)payload[i];
     }
     logInfo("[MQTT] " + String(topic) + " => " + msg);
-    if (String(topic) == "vao22/cmd")
+    
+    // Handle test mode state
+    if (String(topic) == "vao21/state/test_mode")
+    {
+        if (msg == "ON")
+        {
+            setTestMode(true);
+            logInfo("Test mode enabled via MQTT");
+        }
+        else if (msg == "OFF")
+        {
+            setTestMode(false);
+            logInfo("Test mode disabled via MQTT");
+        }
+    }
+    else if (String(topic) == "vao22/cmd")
     {
         int next = (mqIn + 1) % MQTT_QUEUE_SIZE;
 
@@ -80,6 +95,7 @@ bool mqttReconnect()
     {
         mqtt.publish("vao22/status", "online", true);
         mqtt.subscribe("vao22/cmd");
+        mqtt.subscribe("vao21/state/test_mode");
         logInfo("[MQTT] Connected");
     }
     else
